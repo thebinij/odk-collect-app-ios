@@ -10,6 +10,7 @@ public struct ProjectSettingsView: View {
     @State private var isTestingConnection = false
     @State private var testConnectionMessage: String?
     @State private var testConnectionSucceeded = false
+    @State private var isShowingClearConfirmation = false
 
     public init(projectStore: ProjectStore) {
         self.projectStore = projectStore
@@ -25,7 +26,11 @@ public struct ProjectSettingsView: View {
                 TextField("Username", text: $projectStore.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                SecureField("Password", text: $projectStore.password)
+                    // Paired with a secure field below, iOS treats this as a login
+                    // form's username and offers its own "Save Password" prompt on
+                    // leaving the screen unless explicitly opted out here too.
+                    .textContentType(UITextContentType(rawValue: ""))
+                ManualEntrySecureField(placeholder: "Password", text: $projectStore.password)
 
                 Button {
                     Task { await testConnection() }
@@ -44,8 +49,25 @@ public struct ProjectSettingsView: View {
                         .foregroundStyle(testConnectionSucceeded ? .green : .red)
                 }
             }
+
+            Section {
+                Button("Clear Project", role: .destructive) {
+                    isShowingClearConfirmation = true
+                }
+            } footer: {
+                Text("Removes the saved server URL, username, and password from this device.")
+            }
         }
         .navigationTitle("Project Settings")
+        .alert("Clear Project?", isPresented: $isShowingClearConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Clear", role: .destructive) {
+                testConnectionMessage = nil
+                projectStore.clear()
+            }
+        } message: {
+            Text("This removes the saved server URL, username, and password from this device. Forms and submissions already downloaded are not affected.")
+        }
     }
 
     private func testConnection() async {

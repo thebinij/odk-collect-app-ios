@@ -1,7 +1,7 @@
 import Foundation
 
 /// A single `<xform>` entry from an OpenRosa `formList` (xformsList) response.
-public struct RemoteForm: Identifiable, Hashable, Sendable {
+public struct RemoteForm: Identifiable, Hashable, Sendable, Codable {
     public var id: String { formID }
 
     public let formID: String

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
+  <h:head><h:title>GroupRelevant</h:title>
+    <model>
+      <instance><data id="gr"><gate/><g1><a/></g1><meta><instanceID/></meta></data></instance>
+      <bind nodeset="/data/gate" type="string"/>
+      <bind nodeset="/data/g1" relevant="/data/gate = 'yes'"/>
+      <bind nodeset="/data/g1/a" type="string" required="true()"/>
+      <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
+    </model>
+  </h:head>
+  <h:body>
+    <select1 ref="/data/gate"><label>Gate</label>
+      <item><label>Yes</label><value>yes</value></item>
+      <item><label>No</label><value>no</value></item>
+    </select1>
+    <group ref="/data/g1" appearance="field-list">
+      <label>Section G1</label>
+      <input ref="/data/g1/a"><label>A</label></input>
+    </group>
+  </h:body>
+</h:html>

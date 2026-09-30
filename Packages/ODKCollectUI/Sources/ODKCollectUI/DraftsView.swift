@@ -10,11 +10,11 @@ private struct OpenedDraft: Identifiable {
     let instanceXML: String
 }
 
-/// Lists forms that have been saved (mid-fill, or a completed submission that
-/// couldn't reach the server yet) but not sent. Tapping one reopens it in the normal
-/// one-question-at-a-time flow, starting from the first question regardless of what's
-/// already answered — the form's own XForm definition was saved alongside the
-/// answers, so this works fully offline.
+/// Lists forms saved mid-fill (`.draft` — not yet fully answered). Tapping one
+/// reopens it in the normal one-question-at-a-time flow, starting from the first
+/// question regardless of what's already answered — the form's own XForm definition
+/// was saved alongside the answers, so this works fully offline. A fully answered
+/// form that's just waiting to upload lives in Ready to Send instead, not here.
 public struct DraftsView: View {
     private let project: Project
     private let password: String
@@ -32,11 +32,11 @@ public struct DraftsView: View {
 
     public var body: some View {
         ZStack {
-            if submissionStore.pendingSubmissions.isEmpty {
+            if submissionStore.draftSubmissions.isEmpty {
                 Text("No drafts.")
                     .foregroundStyle(.secondary)
             } else {
-                List(submissionStore.pendingSubmissions) { submission in
+                List(submissionStore.draftSubmissions) { submission in
                     Button {
                         open(submission)
                     } label: {

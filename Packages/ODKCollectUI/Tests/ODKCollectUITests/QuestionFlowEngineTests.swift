@@ -242,4 +242,47 @@ final class QuestionFlowNavigatorTests: XCTestCase {
         XCTAssertTrue(navigator.isAtStart)
         XCTAssertTrue(navigator.isAtEnd)
     }
+
+    /// Regression: a freshly opened form (no draft, nothing answered yet) landed
+    /// straight on the "Send"/"Save Draft" finish page instead of its first
+    /// question. Root cause: `EnketoFormState.isFormReady` flips `true` — making
+    /// `QuestionFlowView` appear and build its first step list — *before* its
+    /// `requestQuestions()` round trip has actually populated `questions`, so that
+    /// first `buildSteps(questions: [], ...)` call returns just `[.finish]` (it's
+    /// always present, even for an empty list) and the navigator starts sitting on
+    /// it. A moment later the real, populated list arrives; naively preserving
+    /// position "by id" then finds `.finish` again — now at the *end* of the real
+    /// list — and strands the user there, having never seen a real question.
+    func testUpdateStepsDoesNotStrandOnFinishWhenItWasOnlyAPlaceholderForNotYetLoadedQuestions() {
+        var navigator = QuestionFlowNavigator(steps: [.finish])
+        XCTAssertEqual(navigator.current, .finish, "the transient not-yet-loaded state")
+
+        let realSteps: [QuestionFlowEngine.Step] = [
+            .question(makeQuestion(ref: "/data/a")),
+            .question(makeQuestion(ref: "/data/b")),
+            .finish
+        ]
+        navigator.updateSteps(realSteps)
+
+        XCTAssertEqual(navigator.current?.id, "q:/data/a[0]", "must land on the first real question, not get stranded on finish")
+        XCTAssertEqual(navigator.currentIndex, 0)
+    }
+
+    /// The fix above must not break the legitimate case: a user who has actually
+    /// navigated all the way to the finish page, where some *unrelated* live
+    /// recalculation (e.g. a calculate cascade) then refreshes the step list —
+    /// they must stay on finish, not get bounced back to the first question.
+    func testUpdateStepsKeepsAGenuinelyReachedFinishPositionOnAnUnrelatedRefresh() {
+        let fullSteps: [QuestionFlowEngine.Step] = [
+            .question(makeQuestion(ref: "/data/a")),
+            .question(makeQuestion(ref: "/data/b")),
+            .finish
+        ]
+        var navigator = QuestionFlowNavigator(steps: fullSteps, currentIndex: 2)
+        XCTAssertEqual(navigator.current, .finish)
+
+        navigator.updateSteps(fullSteps)
+
+        XCTAssertEqual(navigator.current, .finish, "a genuinely reached finish position must survive an unrelated step-list refresh")
+    }
 }

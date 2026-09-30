@@ -17,6 +17,21 @@ window.prompt = function () {
     return null;
 };
 
+// Same reasoning, for a subtler case: this document is never shown, but a
+// `<input type="date">`/`type="time"` element that actually receives *focus*
+// makes iOS present its native date/time picker as a full-screen system
+// overlay — completely independent of this WKWebView's own 0×0/opacity:0
+// styling, since that overlay isn't part of the WebView's own view hierarchy
+// at all. Unlike the keyboard, it doesn't auto-dismiss, so it sits on screen
+// until manually closed — and worse, the calendar it shows is always the
+// system's own (Gregorian/English), giving no way to make it honor a
+// `bikram-sambat` appearance. enketo-core's own date/time widget code can call
+// `.focus()` on its underlying native input as part of syncing a
+// programmatically-set value (exactly what `setValue()` below does on every
+// edit) — since nothing in this document should ever actually receive focus,
+// neutralize it globally, the same way confirm/alert/prompt are neutralized.
+HTMLElement.prototype.focus = function () {};
+
 window.ODKBridge = (function () {
     let form = null;
 

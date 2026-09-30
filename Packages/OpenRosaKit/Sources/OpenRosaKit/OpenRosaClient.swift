@@ -5,6 +5,7 @@ public enum OpenRosaError: Error, LocalizedError {
     case httpStatus(Int)
     case parsing(Error)
     case network(Error)
+    case authenticationFailed
 
     public var errorDescription: String? {
         switch self {
@@ -16,6 +17,8 @@ public enum OpenRosaError: Error, LocalizedError {
             return "Couldn't parse the server's response."
         case .network(let error):
             return error.localizedDescription
+        case .authenticationFailed:
+            return "The server rejected the username or password."
         }
     }
 }
@@ -62,7 +65,7 @@ public struct OpenRosaClient {
         do {
             (_, response) = try await session.data(for: request)
         } catch {
-            throw OpenRosaError.network(error)
+            throw Self.mapTransportError(error)
         }
         guard let http = response as? HTTPURLResponse else { throw OpenRosaError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else { throw OpenRosaError.httpStatus(http.statusCode) }
@@ -85,10 +88,20 @@ public struct OpenRosaClient {
         do {
             (_, response) = try await session.data(for: request)
         } catch {
-            throw OpenRosaError.network(error)
+            throw Self.mapTransportError(error)
         }
         guard let http = response as? HTTPURLResponse else { throw OpenRosaError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else { throw OpenRosaError.httpStatus(http.statusCode) }
+    }
+
+    /// `session.data(for:)` surfaces a rejected-credential retry loop's abort as a
+    /// generic `NSURLErrorUserCancelledAuthentication`, which reads as gibberish to a
+    /// user — map it to a clear, specific error instead.
+    private static func mapTransportError(_ error: Error) -> OpenRosaError {
+        if (error as NSError).code == NSURLErrorUserCancelledAuthentication {
+            return .authenticationFailed
+        }
+        return .network(error)
     }
 
     /// Builds the exact `multipart/form-data` body `submit` sends: an
@@ -173,6 +186,13 @@ private final class BasicDigestAuthDelegate: NSObject, URLSessionTaskDelegate {
     ) {
         switch challenge.protectionSpace.authenticationMethod {
         case NSURLAuthenticationMethodHTTPBasic, NSURLAuthenticationMethodHTTPDigest:
+            // The same credential was already offered and rejected once — offering it
+            // again would just get re-challenged forever instead of ever failing, since
+            // nothing else tells the session to give up.
+            guard challenge.previousFailureCount == 0 else {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
+            }
             completionHandler(.useCredential, credential)
         default:
             completionHandler(.performDefaultHandling, nil)

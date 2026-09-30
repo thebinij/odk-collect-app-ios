@@ -46,8 +46,14 @@ public struct QuestionFlowView: View {
         .onChange(of: formState.repeats) { _ in refreshSteps() }
         .onChange(of: navigator.current?.id) { _ in loadDraftValue() }
         .onChange(of: formState.lastValidationResult) { result in
-            guard let result, result.uid == currentUID else { return }
+            // Reset `isBusy` on *any* result, before checking whether it's even for
+            // the question we're currently showing — otherwise a stale/mismatched
+            // result (e.g. one for a question the user has already navigated away
+            // from) would fall through the uid guard below and leave the Next
+            // button permanently disabled, since nothing else ever clears `isBusy`.
+            guard let result else { return }
             isBusy = false
+            guard result.uid == currentUID else { return }
             if result.valid {
                 validationMessage = nil
                 invalidUID = nil
@@ -61,8 +67,10 @@ public struct QuestionFlowView: View {
             }
         }
         .onChange(of: formState.lastGroupValidationResult) { result in
-            guard let result, let currentGroupUIDs, Set(result.results.map(\.uid)) == currentGroupUIDs else { return }
+            // Same reasoning as above — reset `isBusy` unconditionally first.
+            guard let result else { return }
             isBusy = false
+            guard let currentGroupUIDs, Set(result.results.map(\.uid)) == currentGroupUIDs else { return }
             if result.allValid {
                 validationMessage = nil
                 invalidUID = nil
@@ -205,27 +213,53 @@ public struct QuestionFlowView: View {
     }
 }
 
-/// The last step's content — "Send" / "Save Draft" as ordinary rows inside the
-/// same scrollable `Form`, matching every other step (`AddRepeatPromptView`
-/// included) instead of living in the fixed bottom bar.
+/// The last step's content — a centered completion screen (icon, headline,
+/// description, then full-width centered buttons) rather than a plain leading-
+/// aligned list row, so reaching the end of a form reads as "you're done," not
+/// just another settings-style row.
 private struct FinishPromptView: View {
     let onSend: () -> Void
     let onSaveDraft: () -> Void
 
     var body: some View {
         Section {
-            Button(action: onSend) {
-                Label("Send", systemImage: "paperplane.fill")
+            VStack(spacing: 16) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.green)
+
+                Text("Every question has been answered")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+
+                Text("Send this form now, or save it as a draft to review or finish later.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                VStack(spacing: 12) {
+                    Button {
+                        onSend()
+                    } label: {
+                        Label("Send", systemImage: "paperplane.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button {
+                        onSaveDraft()
+                    } label: {
+                        Label("Save Draft", systemImage: "square.and.arrow.down")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(.top, 8)
             }
-            Button(action: onSaveDraft) {
-                Label("Save Draft", systemImage: "square.and.arrow.down")
-            }
-        } header: {
-            Label("Every question has been answered", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-                .textCase(nil)
-        } footer: {
-            Text("Send this form now, or save it as a draft to review or finish later.")
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
         }
     }
 }
