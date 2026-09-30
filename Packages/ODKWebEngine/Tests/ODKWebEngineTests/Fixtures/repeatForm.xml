@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
+  <h:head><h:title>Repeat</h:title>
+    <model>
+      <instance><data id="rep"><g><r><item/></r></g><meta><instanceID/></meta></data></instance>
+      <bind nodeset="/data/g/r/item" type="string"/>
+      <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
+    </model>
+  </h:head>
+  <h:body>
+    <group ref="/data/g">
+      <label>Group G</label>
+      <repeat nodeset="/data/g/r">
+        <input ref="/data/g/r/item"><label>Item</label></input>
+      </repeat>
+    </group>
+  </h:body>
+</h:html>

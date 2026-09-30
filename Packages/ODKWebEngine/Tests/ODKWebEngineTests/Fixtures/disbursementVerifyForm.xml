@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms" xmlns:odk="http://www.opendatakit.org/xforms">
+  <h:head>
+    <h:title>Disbursement Verify</h:title>
+    <model odk:xforms-version="1.0.0">
+      <instance>
+        <data id="disbursement_verify" version="3">
+          <disbursement_id/>
+          <received_status/>
+          <proof/>
+          <remarks/>
+          <meta>
+            <instanceID/>
+          </meta>
+        </data>
+      </instance>
+      <instance id="received_status">
+        <root>
+          <item>
+            <name>received</name>
+            <label>हो</label>
+          </item>
+          <item>
+            <name>not_received</name>
+            <label>होइन</label>
+          </item>
+        </root>
+      </instance>
+      <bind nodeset="/data/disbursement_id" type="string"/>
+      <bind nodeset="/data/received_status" type="string" required="true()"/>
+      <bind nodeset="/data/proof" type="binary" required="false()" relevant=" /data/received_status  = 'received'"/>
+      <bind nodeset="/data/remarks" type="string" required="false()"/>
+      <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" jr:preload="uid"/>
+    </model>
+  </h:head>
+  <h:body>
+    <select1 ref="/data/received_status">
+      <label>के तपाईंले यो रकम प्राप्त गर्नुभयो?</label>
+      <itemset nodeset="instance('received_status')/root/item">
+        <value ref="name"/>
+        <label ref="label"/>
+      </itemset>
+    </select1>
+    <upload mediatype="application/*" ref="/data/proof">
+      <label>स्टेटमेन्ट वा प्रमाण अपलोड गर्नुहोस्</label>
+    </upload>
+    <input appearance="multiline" ref="/data/remarks">
+      <label>कैफियत</label>
+    </input>
+  </h:body>
+</h:html>

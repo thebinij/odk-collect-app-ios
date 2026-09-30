@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
+  <h:head><h:title>Itemset</h:title>
+    <model>
+      <instance>
+        <data id="itemset-form">
+          <grievance_details><is_own_grievance/></grievance_details>
+          <is_confidential/>
+          <meta><instanceID/></meta>
+        </data>
+      </instance>
+      <instance id="grievance_owner">
+        <root>
+          <item><name>mine</name><label>My own</label></item>
+          <item><name>someone_else</name><label>Someone else's</label></item>
+        </root>
+      </instance>
+      <bind nodeset="/data/grievance_details/is_own_grievance" type="string" required="true()"/>
+      <bind nodeset="/data/is_confidential" type="string" relevant="/data/grievance_details/is_own_grievance = 'someone_else'"/>
+      <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
+    </model>
+  </h:head>
+  <h:body>
+    <group appearance="field-list" ref="/data/grievance_details">
+      <label>Grievance Details</label>
+      <select1 ref="/data/grievance_details/is_own_grievance">
+        <label>Is this your own grievance or someone else's?</label>
+        <hint>Pick one</hint>
+        <itemset nodeset="instance('grievance_owner')/root/item">
+          <value ref="name"/>
+          <label ref="label"/>
+        </itemset>
+      </select1>
+    </group>
+    <input ref="/data/is_confidential"><label>Confidential?</label></input>
+  </h:body>
+</h:html>

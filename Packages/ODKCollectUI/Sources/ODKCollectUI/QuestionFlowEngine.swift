@@ -137,10 +137,26 @@ public struct QuestionFlowNavigator: Equatable {
     /// Replaces the step list — e.g. after `setValue` changes another question's
     /// relevance, or a repeat instance is added/removed — while keeping the user on
     /// the same step if it still exists, otherwise clamping to the nearest valid one.
+    ///
+    /// `.finish`'s id (`"finish"`) is *always* present in any non-empty step list
+    /// `QuestionFlowEngine.buildSteps` produces — including the trivial one-element
+    /// list it returns for `questions: []`. That empty snapshot is exactly what a
+    /// freshly opened form has for a moment: `EnketoFormState.isFormReady` flips
+    /// `true` (making `QuestionFlowView` appear and call this) *before* its
+    /// `requestQuestions()` round trip has actually populated `questions`. Naively
+    /// preserving position by id would then latch onto `.finish` in that transient
+    /// `[.finish]` list, and — once the real, populated list arrives a moment
+    /// later — "preserve" that same id onto `.finish`'s new position at the *end*
+    /// of it, stranding the user on the finish page of a form they never answered
+    /// a single question of. Only trust a preserved `.finish` position when the
+    /// step list it was found in actually had real content already (more than
+    /// just itself) — i.e. the user was genuinely already navigating, not caught
+    /// mid-load.
     public mutating func updateSteps(_ newSteps: [QuestionFlowEngine.Step]) {
         let currentID = current?.id
+        let currentWasOnlyPlaceholderFinish = currentID == "finish" && steps.count == 1
         steps = newSteps
-        if let currentID, let index = steps.firstIndex(where: { $0.id == currentID }) {
+        if !currentWasOnlyPlaceholderFinish, let currentID, let index = steps.firstIndex(where: { $0.id == currentID }) {
             currentIndex = index
         } else {
             currentIndex = Self.clamp(currentIndex, to: steps)

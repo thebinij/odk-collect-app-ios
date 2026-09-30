@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms" xmlns:odk="http://www.opendatakit.org/xforms">
+  <h:head>
+    <h:title>गुनासो</h:title>
+    <model odk:xforms-version="1.0.0">
+      <instance>
+        <data id="grievances" version="2">
+          <date_lodged/>
+          <grievance_details>
+            <is_own_grievance/>
+            <is_confidential/>
+            <complainant_name/>
+            <complainant_phone/>
+            <complainant_email/>
+            <description/>
+          </grievance_details>
+          <meta>
+            <instanceID/>
+          </meta>
+        </data>
+      </instance>
+      <instance id="grievance_owner">
+        <root>
+          <item>
+            <name>mine</name>
+            <label>मेरो आफ्नै</label>
+          </item>
+          <item>
+            <name>someone_else</name>
+            <label>अरू कसैको</label>
+          </item>
+        </root>
+      </instance>
+      <instance id="yes_no">
+        <root>
+          <item>
+            <name>yes</name>
+            <label>हो</label>
+          </item>
+          <item>
+            <name>no</name>
+            <label>होइन</label>
+          </item>
+        </root>
+      </instance>
+      <bind nodeset="/data/date_lodged" jr:preload="date" type="date" jr:preloadParams="today" required="true()"/>
+      <bind nodeset="/data/grievance_details/is_own_grievance" type="string" required="true()"/>
+      <bind nodeset="/data/grievance_details/is_confidential" type="string" required="true()" relevant=" /data/grievance_details/is_own_grievance  = 'someone_else'"/>
+      <bind nodeset="/data/grievance_details/complainant_name" type="string" required="false()" relevant=" /data/grievance_details/is_own_grievance  = 'someone_else' and  /data/grievance_details/is_confidential  = 'no'"/>
+      <bind nodeset="/data/grievance_details/complainant_phone" type="string" required="false()" relevant=" /data/grievance_details/is_own_grievance  = 'someone_else' and  /data/grievance_details/is_confidential  = 'no'"/>
+      <bind nodeset="/data/grievance_details/complainant_email" type="string" required="false()" relevant=" /data/grievance_details/is_own_grievance  = 'someone_else' and  /data/grievance_details/is_confidential  = 'no'"/>
+      <bind nodeset="/data/grievance_details/description" type="string" required="true()"/>
+      <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" jr:preload="uid"/>
+    </model>
+  </h:head>
+  <h:body>
+    <group appearance="field-list" ref="/data/grievance_details">
+      <label>गुनासो विवरण</label>
+      <select1 ref="/data/grievance_details/is_own_grievance">
+        <label>के यो गुनासो तपाईंको हो कि अरू कसैको?</label>
+        <itemset nodeset="instance('grievance_owner')/root/item">
+          <value ref="name"/>
+          <label ref="label"/>
+        </itemset>
+      </select1>
+      <select1 ref="/data/grievance_details/is_confidential">
+        <label>उनको परिचय गोपनीय राख्ने हो?</label>
+        <itemset nodeset="instance('yes_no')/root/item">
+          <value ref="name"/>
+          <label ref="label"/>
+        </itemset>
+      </select1>
+      <input ref="/data/grievance_details/complainant_name">
+        <label>नाम</label>
+      </input>
+      <input ref="/data/grievance_details/complainant_phone">
+        <label>फोन</label>
+      </input>
+      <input ref="/data/grievance_details/complainant_email">
+        <label>इमेल</label>
+      </input>
+      <input appearance="multiline" ref="/data/grievance_details/description">
+        <label>विवरण</label>
+      </input>
+    </group>
+  </h:body>
+</h:html>

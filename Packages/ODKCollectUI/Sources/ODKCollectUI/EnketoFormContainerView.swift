@@ -6,17 +6,18 @@ import SwiftUI
 /// Hosts a downloaded (or previously-saved-draft) XForm in the bundled Enketo engine.
 ///
 /// - "Save" serializes whatever has been filled in so far — valid or not — to the
-///   local `SubmissionStore` as a `.pending` draft, so progress can be checked out at
-///   any point and resumed later, fully offline (the XForm definition is saved
-///   alongside the answers).
-/// - "Submit" validates, then always saves the completed form locally first — so
-///   nothing is lost without a connection — before immediately attempting the OpenRosa
-///   upload (HEAD `/submission` to confirm credentials, then POST the instance XML) if
-///   a network is available, exactly as Enketo/ODK Collect do.
+///   local `SubmissionStore` as a `.draft`, so progress can be checked out at any
+///   point and resumed later, fully offline (the XForm definition is saved alongside
+///   the answers).
+/// - "Send" validates, then always saves the completed form locally first as
+///   `.readyToSend` — so nothing is lost without a connection — before immediately
+///   attempting the OpenRosa upload (HEAD `/submission` to confirm credentials, then
+///   POST the instance XML). If that upload fails, the entry simply stays
+///   `.readyToSend` for a manual retry from the Ready to Send list.
 ///
 /// Both actions update the same `SubmissionStore` entry in place once one exists for
 /// this session (starting from `existingSubmissionID` when resuming a draft), so
-/// repeated saves — or a final submit — never create duplicate drafts.
+/// repeated saves — or a final send — never create duplicate entries.
 public struct EnketoFormContainerView: View {
     private let formID: String
     private let formName: String
@@ -148,10 +149,14 @@ public struct EnketoFormContainerView: View {
                 guard let xml else { return }
                 saveDraft(xmlString: xml)
             }
-            .confirmationDialog(
+            // `.alert`, not `.confirmationDialog` — a confirmation dialog renders as
+            // an iPad popover anchored to (and pointing at, with a visible directional
+            // arrow) whatever view presented it, which reads as a stray, oddly
+            // positioned callout rather than a clear yes/no prompt. `.alert` is
+            // always a centered modal on every device, with no such anchoring.
+            .alert(
                 "Save your progress before leaving?",
-                isPresented: $isShowingBackConfirmation,
-                titleVisibility: .visible
+                isPresented: $isShowingBackConfirmation
             ) {
                 Button("Save Draft") {
                     isSavingBeforeExit = true
@@ -181,7 +186,7 @@ public struct EnketoFormContainerView: View {
                 case .savedOffline:
                     return Alert(
                         title: Text("Saved"),
-                        message: Text("No connection right now, so the form was saved and will show up in Sent once it goes through."),
+                        message: Text("No connection right now, so the form was saved to Ready to Send — it'll upload from there once you're back online."),
                         dismissButton: .default(Text("OK")) { onChangeForm() }
                     )
                 case .draftSaved:
@@ -206,9 +211,10 @@ public struct EnketoFormContainerView: View {
         }
     }
 
-    /// Always saves the completed form locally first, then tries to upload it right
-    /// away. If the upload fails (most commonly: no network), the saved copy simply
-    /// stays `.pending` for a later retry — it is never lost.
+    /// Always saves the completed form locally first as `.readyToSend`, then tries to
+    /// upload it right away. If the upload fails (most commonly: no network), the
+    /// saved copy simply stays `.readyToSend` — visible in the Ready to Send list for
+    /// a manual retry later — it is never lost.
     private func submit(xmlString: String) async {
         isSubmitting = true
         defer { isSubmitting = false }
@@ -220,6 +226,7 @@ public struct EnketoFormContainerView: View {
                 xformXML: xformXML,
                 formID: formID,
                 formName: formName,
+                status: .readyToSend,
                 attachments: attachments,
                 existingID: currentSubmissionID
             )
@@ -240,8 +247,8 @@ public struct EnketoFormContainerView: View {
         }
     }
 
-    /// Checkpoints the current (possibly incomplete) answers as a `.pending` draft —
-    /// no network involved, no validation required.
+    /// Checkpoints the current (possibly incomplete) answers as a `.draft` — no
+    /// network involved, no validation required.
     private func saveDraft(xmlString: String) {
         isSavingDraft = true
         defer { isSavingDraft = false }
@@ -252,6 +259,7 @@ public struct EnketoFormContainerView: View {
                 xformXML: xformXML,
                 formID: formID,
                 formName: formName,
+                status: .draft,
                 attachments: attachments,
                 existingID: currentSubmissionID
             )
@@ -264,18 +272,7 @@ public struct EnketoFormContainerView: View {
 
     private func submissionAttachments() -> [SubmissionAttachment] {
         attachments.map { filename, data in
-            SubmissionAttachment(filename: filename, contentType: Self.contentType(forFilename: filename), data: data)
-        }
-    }
-
-    private static func contentType(forFilename filename: String) -> String {
-        switch (filename as NSString).pathExtension.lowercased() {
-        case "jpg", "jpeg": return "image/jpeg"
-        case "png": return "image/png"
-        case "m4a": return "audio/mp4"
-        case "mp3": return "audio/mpeg"
-        case "mp4", "mov": return "video/mp4"
-        default: return "application/octet-stream"
+            SubmissionAttachment(filename: filename, contentType: SubmissionAttachment.contentType(forFilename: filename), data: data)
         }
     }
 }

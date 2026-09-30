@@ -40,9 +40,9 @@ Four local Swift Packages plus a thin app target:
 | Module | What it is | Depends on |
 |---|---|---|
 | `Packages/ODKWebEngine` | The headless engine: `EnketoFormView` (a `WKWebView` wrapper) + `EnketoFormState` (the `ObservableObject` driving it), plus the vendored `enketo-core`/`enketo-transformer` bundles and `bridge.js` (`Resources/EnketoEngine/`). Exposes `Question`/`RepeatSeries` models and the bridge API (`setValue`, `validateQuestion(s)`, `addRepeatInstance`, …). No UI, no branding. | WebKit |
-| `Packages/OpenRosaKit` | Native OpenRosa client (`OpenRosaClient.fetchFormList()` / `.fetchFormXML(from:)`, HTTP Basic/Digest auth, `X-OpenRosa-Version`) plus `SubmissionStore` — local, offline-first storage for both `.pending` drafts and `.sent` submissions, each saved with its own `form.xml` copy so a draft can be reopened without any network. | Foundation |
+| `Packages/OpenRosaKit` | Native OpenRosa client (`OpenRosaClient.fetchFormList()` / `.fetchFormXML(from:)`, HTTP Basic/Digest auth, `X-OpenRosa-Version`) plus two local, offline-first stores: `SubmissionStore` (`.draft`/`.readyToSend`/`.sent` submissions, each saved with its own `form.xml` copy so it can be reopened/resent without any network) and `FormCacheStore` (the last-synced form list and each form's own XForm XML, so a form stays usable offline once seen). `OfflineFallback` is the shared "try live, fall back to cache" decision logic both use. | Foundation |
 | `Packages/ProjectSettingsKit` | `Project` model (server URL, username) + `ProjectStore`: server URL/username persist in `UserDefaults`, the password lives only in the Keychain (`KeychainStore`), and every field saves as it's typed. | Foundation, Security |
-| `Packages/ODKCollectUI` | Every screen: `RootView` (Home), `SettingsView` → `ProjectSettingsView`, `FormListView`, `DraftsView`/`SentFormsView`, `SentFormAnswersView` (read-only, all-questions-at-once), and the native form-filling stack — `EnketoFormContainerView` (hosts the hidden engine + save/submit orchestration) → `QuestionFlowView` (navigation) → `QuestionFlowEngine` (pure step-sequencing logic) → `QuestionInputView` (+ per-kind widgets: date/Bikram-Sambat/rank/geopoint/geotrace/signature/media). | ODKWebEngine, OpenRosaKit, ProjectSettingsKit |
+| `Packages/ODKCollectUI` | Every screen: `RootView` (Home), `SettingsView` → `ProjectSettingsView`, `FormListView`, `DraftsView`/`ReadyToSendView`/`SentFormsView`, `SentFormAnswersView` (read-only, all-questions-at-once), and the native form-filling stack — `EnketoFormContainerView` (hosts the hidden engine + save/submit orchestration) → `QuestionFlowView` (navigation) → `QuestionFlowEngine` (pure step-sequencing logic) → `QuestionInputView` (+ per-kind widgets: date/Bikram-Sambat/rank/geopoint/geotrace/signature/media). | ODKWebEngine, OpenRosaKit, ProjectSettingsKit |
 | `ODKCollect/` | The app shell: `ODKCollectApp.swift` (`@main`), `Info.plist`, `Assets.xcassets` (icon, splash logo, accent color), privacy manifest. | ODKCollectUI |
 
 `ODKWebEngine` and `OpenRosaKit` have no dependency on each other, on
@@ -67,16 +67,30 @@ that turns the engine's flat, reactive question list into a navigable sequence:
 
 ### Offline behavior
 
-- Filling in a form you're already inside of, saving/resuming a draft, and viewing sent
-  forms all work fully offline — the engine runs on-device and `SubmissionStore` writes
-  everything (including the form's own XML) to local files.
-- Submitting always saves locally first, then tries to upload; if that fails (most
-  commonly: no network), the saved copy just stays `.pending` for a later retry — never
-  lost.
-- **Not yet offline**: the form list and each form's XML definition are fetched fresh
-  from the server every time (`FormListView`) — there's no local cache of previously
-  seen forms yet, so starting a *new* instance of a form requires connectivity. See
-  `CONTRIBUTING.md` for how this could be added.
+This app is designed to work fully offline once a project's forms have been synced
+once — mirroring ODK Collect (Android)'s own local forms/instances cache, just backed
+by flat files instead of SQLite:
+
+- **Starting a new form**: `FormListView` always tries the live server first, then
+  falls back to `FormCacheStore` — a local cache of the last-fetched form list and each
+  form's own XForm XML — if there's no connection (`OfflineFallback.resolve`, shared,
+  pure decision logic). A live fetch also refreshes the cache. A form seen once stays
+  usable offline indefinitely after that; a "showing forms from your last sync"
+  indicator appears whenever the list came from the cache rather than the network.
+  Every not-yet-cached form's XML is also downloaded automatically in the background
+  as soon as the list loads (matching ODK Collect's own "Get Blank Form" sync) — not
+  only the ones a user happens to tap — with a small progress indicator and each
+  form's row showing when it was last downloaded.
+- **Filling in, saving, and resuming**: entirely on-device — the engine runs locally
+  and `SubmissionStore` writes everything (including a copy of the form's own XML)
+  to local files, so a `.draft` or `.readyToSend` entry can be reopened/resent without
+  any network at all.
+- **Sending**: always saves locally first as `.readyToSend`, then tries to upload. If
+  that fails (most commonly: no network), the entry simply stays `.readyToSend` —
+  visible in the **Ready to Send** list, with a manual "Send Now" retry per entry. (A
+  Settings toggle for automatic retry-when-online, versus always-manual, is planned but
+  not yet built.)
+- **Viewing sent forms**: pure local read, no network involved.
 
 ## Requirements
 
@@ -148,7 +162,8 @@ follow.
 - **Single active project.** Only one server/credential set is stored at a time — a
   multi-project switcher would be an additive change to `ProjectSettingsKit`, not a
   rewrite.
-- **No offline form cache yet.** See "Offline behavior" above.
+- **Ready to Send is manual-only for now.** A Settings toggle for automatic
+  retry-when-online is planned but not yet built — see "Offline behavior" above.
 - **Self-signed/untrusted TLS certificates aren't handled** — the server needs a
   certificate the OS already trusts.
 - **iOS 16.4 is the deployment floor**, matching `WKWebView`'s modern JS engine

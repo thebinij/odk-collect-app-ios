@@ -33,6 +33,15 @@ public final class ProjectStore: ObservableObject {
 
     /// A valid `Project`, derived from the current fields; `nil` while the server URL
     /// or username hasn't yet been filled in with something usable.
+    /// Resets every field and removes the stored password from the Keychain outright
+    /// (unlike deleting the app, which Keychain entries survive by design).
+    public func clear() {
+        serverURLText = ""
+        username = ""
+        password = ""
+        keychain.deletePassword()
+    }
+
     public var project: Project? {
         let trimmedURL = serverURLText.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)

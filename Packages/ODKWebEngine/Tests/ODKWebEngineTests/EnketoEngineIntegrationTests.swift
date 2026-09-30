@@ -180,6 +180,24 @@ final class EnketoEngineIntegrationTests: XCTestCase {
         }
         XCTAssertEqual(result?.valid, false, "required and empty")
         XCTAssertNotNil(result?.message)
+
+        // Regression: a stuck-disabled "Next" bug traced back to the *native*
+        // one-question flow only resetting its busy/loading flag when a
+        // validation result's uid matched the currently displayed question —
+        // any other result (stale, or for a different question) silently fell
+        // through and left that flag permanently true. This can't be exercised
+        // through `QuestionFlowView` itself (its busy flag is private SwiftUI
+        // `@State`, and there's no UI-automation access in this environment to
+        // drive it), but the layer beneath it — does re-validating after
+        // correcting the value actually report valid? — is exactly what would
+        // silently break if `EnketoFormState`/bridge.js stopped re-evaluating
+        // constraints on a fresh value, so it's covered here.
+        let corrected = waitForValidation(state) {
+            state.setValue(ref: "/data/name", index: 0, value: "Ada", typeXml: "string")
+            state.validateQuestion(ref: "/data/name", index: 0)
+        }
+        XCTAssertEqual(corrected?.valid, true, "now non-empty — must report valid, not keep reporting the earlier failure")
+        XCTAssertNil(corrected?.message)
     }
 
     func testResumingWithInstanceXMLPrefillsAnswers() {
@@ -285,6 +303,47 @@ final class EnketoEngineIntegrationTests: XCTestCase {
         XCTAssertEqual(question(state, "/data/dob")?.bikramSambat, true)
     }
 
+    /// Verbatim output of `pyxform.xls2xform` for a `type: date, appearance:
+    /// bikram-sambat` survey row, alongside an ordinary (non-BS) date question —
+    /// confirms the real compiled shape is flagged correctly, distinct from the
+    /// hand-written fixture above which could in principle hide an assumption pyxform
+    /// doesn't actually share.
+    func testRealPyxformBikramSambatDateIsFlaggedAndAnOrdinaryDateIsNot() {
+        let xml = """
+        <?xml version="1.0"?>
+        <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms" xmlns:odk="http://www.opendatakit.org/xforms">
+          <h:head>
+            <h:title>BS Test</h:title>
+            <model odk:xforms-version="1.0.0">
+              <instance>
+                <data id="bs_test">
+                  <dob/>
+                  <today_date/>
+                  <meta>
+                    <instanceID/>
+                  </meta>
+                </data>
+              </instance>
+              <bind nodeset="/data/dob" type="date"/>
+              <bind nodeset="/data/today_date" type="date"/>
+              <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" jr:preload="uid"/>
+            </model>
+          </h:head>
+          <h:body>
+            <input appearance="bikram-sambat" ref="/data/dob">
+              <label>Date of birth</label>
+            </input>
+            <input ref="/data/today_date">
+              <label>Today's date</label>
+            </input>
+          </h:body>
+        </h:html>
+        """
+        let state = loadForm(xml)
+        XCTAssertEqual(question(state, "/data/dob")?.bikramSambat, true)
+        XCTAssertEqual(question(state, "/data/today_date")?.bikramSambat, false)
+    }
+
     // MARK: - `select1`/`select` backed by a secondary-instance itemset
     // (regression: "question text not visible" — reported against a real
     // XLSForm-compiled form where pyxform emits a secondary `<instance>` +
@@ -367,255 +426,26 @@ final class EnketoEngineIntegrationTests: XCTestCase {
 // MARK: - Fixtures
 
 private extension EnketoEngineIntegrationTests {
-    static let linearForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>Linear</h:title>
-        <model>
-          <instance><data id="linear"><name/><age/><meta><instanceID/></meta></data></instance>
-          <bind nodeset="/data/name" type="string" required="true()"/>
-          <bind nodeset="/data/age" type="int"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-        </model>
-      </h:head>
-      <h:body>
-        <input ref="/data/name"><label>Name</label></input>
-        <input ref="/data/age"><label>Age</label></input>
-      </h:body>
-    </h:html>
-    """
+    static let linearForm = Fixtures.load("linearForm")
 
-    static let metaFieldForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>MetaField</h:title>
-        <model>
-          <instance><data id="mf"><name/><meta><instanceID/><instanceName/></meta></data></instance>
-          <bind nodeset="/data/name" type="string"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-          <bind nodeset="/data/meta/instanceName" type="string" readonly="true()" calculate="/data/name"/>
-        </model>
-      </h:head>
-      <h:body>
-        <input ref="/data/name"><label>Name</label></input>
-        <input ref="/data/meta/instanceName"><label>Instance Name (still meta, even though it's in the body)</label></input>
-      </h:body>
-    </h:html>
-    """
+    static let metaFieldForm = Fixtures.load("metaFieldForm")
 
-    static let appearanceHiddenForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>Hidden</h:title>
-        <model>
-          <instance><data id="hd"><secret/><meta><instanceID/></meta></data></instance>
-          <bind nodeset="/data/secret" type="string"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-        </model>
-      </h:head>
-      <h:body>
-        <input ref="/data/secret" appearance="hidden"><label>Secret</label></input>
-      </h:body>
-    </h:html>
-    """
+    static let appearanceHiddenForm = Fixtures.load("appearanceHiddenForm")
 
-    static let groupRelevantForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>GroupRelevant</h:title>
-        <model>
-          <instance><data id="gr"><gate/><g1><a/></g1><meta><instanceID/></meta></data></instance>
-          <bind nodeset="/data/gate" type="string"/>
-          <bind nodeset="/data/g1" relevant="/data/gate = 'yes'"/>
-          <bind nodeset="/data/g1/a" type="string" required="true()"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-        </model>
-      </h:head>
-      <h:body>
-        <select1 ref="/data/gate"><label>Gate</label>
-          <item><label>Yes</label><value>yes</value></item>
-          <item><label>No</label><value>no</value></item>
-        </select1>
-        <group ref="/data/g1" appearance="field-list">
-          <label>Section G1</label>
-          <input ref="/data/g1/a"><label>A</label></input>
-        </group>
-      </h:body>
-    </h:html>
-    """
+    static let groupRelevantForm = Fixtures.load("groupRelevantForm")
 
-    static let cascadingSelectForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>Cascading</h:title>
-        <model>
-          <instance><data id="cas"><country/><city/><meta><instanceID/></meta></data></instance>
-          <instance id="cities">
-            <root>
-              <item><itextId>static_instance-cities-0</itextId><country>np</country><name>kathmandu</name></item>
-              <item><itextId>static_instance-cities-1</itextId><country>np</country><name>pokhara</name></item>
-              <item><itextId>static_instance-cities-2</itextId><country>in</country><name>delhi</name></item>
-            </root>
-          </instance>
-          <itext>
-            <translation lang="en">
-              <text id="static_instance-cities-0"><value>Kathmandu</value></text>
-              <text id="static_instance-cities-1"><value>Pokhara</value></text>
-              <text id="static_instance-cities-2"><value>Delhi</value></text>
-            </translation>
-          </itext>
-          <bind nodeset="/data/country" type="string"/>
-          <bind nodeset="/data/city" type="string" required="true()"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-        </model>
-      </h:head>
-      <h:body>
-        <select1 ref="/data/country"><label>Country</label>
-          <item><label>Nepal</label><value>np</value></item>
-          <item><label>India</label><value>in</value></item>
-        </select1>
-        <select1 ref="/data/city">
-          <label>City</label>
-          <itemset nodeset="instance('cities')/root/item[country = /data/country]">
-            <value ref="name"/>
-            <label ref="jr:itext(itextId)"/>
-          </itemset>
-        </select1>
-      </h:body>
-    </h:html>
-    """
+    static let cascadingSelectForm = Fixtures.load("cascadingSelectForm")
 
-    static let minimalAppearanceForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>MinimalAutocomplete</h:title>
-        <model>
-          <instance><data id="ma"><minimal_select/><minimal_multi/><autocomplete_select/><meta><instanceID/></meta></data></instance>
-          <bind nodeset="/data/minimal_select" type="string"/>
-          <bind nodeset="/data/minimal_multi" type="string"/>
-          <bind nodeset="/data/autocomplete_select" type="string"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-        </model>
-      </h:head>
-      <h:body>
-        <select1 ref="/data/minimal_select" appearance="minimal">
-          <label>Pick one (minimal)</label>
-          <item><label>Alpha</label><value>a</value></item>
-          <item><label>Beta</label><value>b</value></item>
-          <item><label>Gamma</label><value>c</value></item>
-        </select1>
-        <select ref="/data/minimal_multi" appearance="minimal">
-          <label>Pick many (minimal)</label>
-          <item><label>Red</label><value>red</value></item>
-          <item><label>Blue</label><value>blue</value></item>
-        </select>
-        <select1 ref="/data/autocomplete_select" appearance="autocomplete">
-          <label>Pick one (autocomplete)</label>
-          <item><label>One</label><value>1</value></item>
-          <item><label>Two</label><value>2</value></item>
-        </select1>
-      </h:body>
-    </h:html>
-    """
+    static let minimalAppearanceForm = Fixtures.load("minimalAppearanceForm")
 
-    static let repeatForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>Repeat</h:title>
-        <model>
-          <instance><data id="rep"><g><r><item/></r></g><meta><instanceID/></meta></data></instance>
-          <bind nodeset="/data/g/r/item" type="string"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-        </model>
-      </h:head>
-      <h:body>
-        <group ref="/data/g">
-          <label>Group G</label>
-          <repeat nodeset="/data/g/r">
-            <input ref="/data/g/r/item"><label>Item</label></input>
-          </repeat>
-        </group>
-      </h:body>
-    </h:html>
-    """
+    static let repeatForm = Fixtures.load("repeatForm")
 
-    static let bikramSambatForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>BS</h:title>
-        <model>
-          <instance><data id="bs"><dob/><meta><instanceID/></meta></data></instance>
-          <bind nodeset="/data/dob" type="date"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-        </model>
-      </h:head>
-      <h:body>
-        <input ref="/data/dob" appearance="bikram-sambat"><label>Date of birth</label></input>
-      </h:body>
-    </h:html>
-    """
+    static let bikramSambatForm = Fixtures.load("bikramSambatForm")
 
     /// Mirrors what pyxform 2.x actually emits for a `select_one <list>` — a
     /// secondary `<instance>` + `<itemset>` with no cascading predicate — nested
     /// inside a `field-list` group, exactly as reported.
-    static let staticSecondaryInstanceItemsetForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>Itemset</h:title>
-        <model>
-          <instance>
-            <data id="itemset-form">
-              <grievance_details><is_own_grievance/></grievance_details>
-              <is_confidential/>
-              <meta><instanceID/></meta>
-            </data>
-          </instance>
-          <instance id="grievance_owner">
-            <root>
-              <item><name>mine</name><label>My own</label></item>
-              <item><name>someone_else</name><label>Someone else's</label></item>
-            </root>
-          </instance>
-          <bind nodeset="/data/grievance_details/is_own_grievance" type="string" required="true()"/>
-          <bind nodeset="/data/is_confidential" type="string" relevant="/data/grievance_details/is_own_grievance = 'someone_else'"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-        </model>
-      </h:head>
-      <h:body>
-        <group appearance="field-list" ref="/data/grievance_details">
-          <label>Grievance Details</label>
-          <select1 ref="/data/grievance_details/is_own_grievance">
-            <label>Is this your own grievance or someone else's?</label>
-            <hint>Pick one</hint>
-            <itemset nodeset="instance('grievance_owner')/root/item">
-              <value ref="name"/>
-              <label ref="label"/>
-            </itemset>
-          </select1>
-        </group>
-        <input ref="/data/is_confidential"><label>Confidential?</label></input>
-      </h:body>
-    </h:html>
-    """
+    static let staticSecondaryInstanceItemsetForm = Fixtures.load("staticSecondaryInstanceItemsetForm")
 
-    static let fieldListGroupForm = """
-    <?xml version="1.0"?>
-    <h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
-      <h:head><h:title>FieldList</h:title>
-        <model>
-          <instance><data id="fl"><g><first/><second/></g><meta><instanceID/></meta></data></instance>
-          <bind nodeset="/data/g/first" type="string" required="true()"/>
-          <bind nodeset="/data/g/second" type="string" required="true()"/>
-          <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
-        </model>
-      </h:head>
-      <h:body>
-        <group ref="/data/g" appearance="field-list">
-          <label>Group G</label>
-          <input ref="/data/g/first"><label>First</label></input>
-          <input ref="/data/g/second"><label>Second</label></input>
-        </group>
-      </h:body>
-    </h:html>
-    """
+    static let fieldListGroupForm = Fixtures.load("fieldListGroupForm")
 }

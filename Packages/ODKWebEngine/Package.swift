@@ -14,7 +14,8 @@ let package = Package(
         ),
         .testTarget(
             name: "ODKWebEngineTests",
-            dependencies: ["ODKWebEngine"]
+            dependencies: ["ODKWebEngine"],
+            resources: [.copy("Fixtures")]
         )
     ]
 )

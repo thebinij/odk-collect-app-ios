@@ -60,7 +60,7 @@ struct SentFormAnswersView: View {
     }
 }
 
-private struct SentAnswerRow: View {
+struct SentAnswerRow: View {
     let question: Question
 
     var body: some View {
@@ -68,7 +68,7 @@ private struct SentAnswerRow: View {
             Text(question.label)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-            if let displayValue {
+            if let displayValue = Self.displayValue(for: question) {
                 Text(displayValue)
                     .foregroundStyle(.secondary)
             }
@@ -76,7 +76,11 @@ private struct SentAnswerRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var displayValue: String? {
+    static let placeholder = "Not answered"
+
+    /// A pure function (rather than a computed property on the view) so it's
+    /// unit-testable without hosting `SentAnswerRow` in a view hierarchy.
+    static func displayValue(for question: Question) -> String? {
         switch question.kind {
         case .note:
             return nil
@@ -91,10 +95,16 @@ private struct SentAnswerRow: View {
             return question.value == "OK" ? "Acknowledged" : "Not acknowledged"
         case .signature, .binaryImage, .binaryAudio, .binaryVideo, .binaryFile:
             return question.value.isEmpty ? placeholder : "Attached: \(question.value)"
+        case .date where question.bikramSambat:
+            // The stored value is always plain Gregorian (see NepaliDateInputView) —
+            // showing it as-is here would silently undo the whole point of a Bikram
+            // Sambat question: the answer must read back in the calendar it was
+            // answered in, the same way the one-question flow's own picker shows it.
+            guard !question.value.isEmpty else { return placeholder }
+            guard let bs = BikramSambatCalendar.bsDate(fromAD: question.value) else { return question.value }
+            return "\(bs.day) \(BikramSambatCalendar.monthNames[bs.month - 1]) \(bs.year)"
         default:
             return question.value.isEmpty ? placeholder : question.value
         }
     }
-
-    private var placeholder: String { "Not answered" }
 }

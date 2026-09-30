@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
+  <h:head><h:title>Linear</h:title>
+    <model>
+      <instance><data id="linear"><name/><age/><meta><instanceID/></meta></data></instance>
+      <bind nodeset="/data/name" type="string" required="true()"/>
+      <bind nodeset="/data/age" type="int"/>
+      <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
+    </model>
+  </h:head>
+  <h:body>
+    <input ref="/data/name"><label>Name</label></input>
+    <input ref="/data/age"><label>Age</label></input>
+  </h:body>
+</h:html>

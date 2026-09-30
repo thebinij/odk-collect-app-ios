@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms">
+  <h:head><h:title>MetaField</h:title>
+    <model>
+      <instance><data id="mf"><name/><meta><instanceID/><instanceName/></meta></data></instance>
+      <bind nodeset="/data/name" type="string"/>
+      <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
+      <bind nodeset="/data/meta/instanceName" type="string" readonly="true()" calculate="/data/name"/>
+    </model>
+  </h:head>
+  <h:body>
+    <input ref="/data/name"><label>Name</label></input>
+    <input ref="/data/meta/instanceName"><label>Instance Name (still meta, even though it's in the body)</label></input>
+  </h:body>
+</h:html>
