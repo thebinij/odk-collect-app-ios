@@ -1,0 +1,141 @@
+/* Native-feeling overrides on top of enketo-core's "plain" theme: system font,
+   no card/box chrome, one clean list of questions with generous tap targets. */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html {
+    /* enketo-core's reset sets this to 62.5% (1rem == 10px); reset it back so any
+       rem usage here behaves predictably. */
+    font-size: 100%;
+}
+
+html, body {
+    background: #ffffff;
+    overflow-x: hidden;
+}
+
+body {
+    /* enketo-core's own layout CSS makes `body` a flex container (to stretch its
+       `.main`/`.paper` wrapper divs, which this page doesn't use). Left as `flex`,
+       #form-container — body's only child here — shrinks to fit its content and
+       gets centered, leaving big empty gutters on both sides instead of filling the
+       screen. Overriding back to normal block flow fixes that. */
+    display: block;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    color: #1c1c1e;
+}
+
+#form-container {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px 16px 64px;
+}
+
+.or {
+    font-size: 17px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+.or .form-logo:empty {
+    display: none;
+}
+
+#form-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 4px 0 20px;
+}
+
+.or .question {
+    padding: 18px 0;
+    margin: 0;
+    border: none;
+    border-bottom: 1px solid #e5e5ea;
+}
+
+.or .question:last-of-type {
+    border-bottom: none;
+}
+
+.or .question-label {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.or .or-hint {
+    display: block;
+    font-size: 14px;
+    color: #8e8e93;
+    margin: -6px 0 10px;
+}
+
+.or input[type="text"],
+.or input[type="number"],
+.or input[type="date"],
+.or input[type="time"],
+.or input[type="tel"],
+.or input[type="email"],
+.or textarea,
+.or select {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 16px;
+    padding: 10px 12px;
+    border: 1px solid #d1d1d6;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.or textarea {
+    min-height: 88px;
+}
+
+.or fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+.or .option-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.or .option-wrapper label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: normal;
+    padding: 10px 0;
+    min-height: 24px;
+}
+
+.or input[type="radio"],
+.or input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+}
+
+.or .btn,
+.or button {
+    font-size: 16px;
+    border-radius: 8px;
+}
+
+.or .invalid-value-msg,
+.or .or-constraint-msg,
+.or .or-required-msg {
+    font-size: 13px;
+    color: #ff3b30;
+    margin-top: 6px;
+}

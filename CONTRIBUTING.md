@@ -1,0 +1,122 @@
+# Contributing
+
+Thanks for considering a contribution. This document covers how to get set up, how
+this codebase is organized, and the conventions pull requests are expected to follow —
+reading it fully before opening a PR will save you a review round-trip.
+
+## Getting set up
+
+```sh
+brew install xcodegen   # if you don't already have it
+xcodegen generate       # produces ODKCollect.xcodeproj — not committed, regenerate
+                         # any time you pull changes to project.yml or add/remove files
+open ODKCollect.xcodeproj
+```
+
+You'll need Xcode itself (not just Command Line Tools) for the iOS SDK. See `README.md`
+for the full setup/first-run walkthrough.
+
+## Before you start: open an issue first for anything non-trivial
+
+Small, obvious fixes (typos, a clear bug with an obvious one-line fix) can go straight
+to a PR. For anything bigger — a new feature, a behavior change, a refactor spanning
+multiple files — please open an issue first describing what you want to do and why.
+This project has a fairly specific architecture (see `README.md`'s Architecture
+section) and it's much cheaper to align on an approach before code is written than
+after.
+
+## Project structure
+
+- `Packages/ODKWebEngine` — the headless Enketo engine wrapper. If your change touches
+  `bridge.js` or how `Question`/`RepeatSeries` are decoded, it's here.
+- `Packages/OpenRosaKit` — OpenRosa protocol client + local submission storage. No UI.
+- `Packages/ProjectSettingsKit` — project/credential persistence. No UI.
+- `Packages/ODKCollectUI` — every screen. Depends on the three packages above.
+- `ODKCollect/` — the thin app shell (entry point, Info.plist, assets).
+
+Each package builds and tests independently (`swift build`/`swift test` for the two
+pure-Foundation ones; `xcodebuild` against a simulator for the two that need
+WebKit/SwiftUI). Keep that independence — don't introduce a dependency from
+`ODKWebEngine` or `OpenRosaKit` back onto `ODKCollectUI` or the app shell.
+
+## Coding conventions
+
+These aren't arbitrary style preferences — they reflect real lessons learned building
+this codebase (see the commit history and, if you have access to it, the extended
+development discussion this project came out of).
+
+- **Comments explain WHY, never WHAT.** A well-named function/variable already says
+  what the code does. Only add a comment for a genuinely non-obvious reason: a subtle
+  invariant, a workaround for a specific upstream quirk (e.g. the notes throughout
+  `bridge.js` about `enketo-core`'s DOM structure), a constraint that would otherwise
+  surprise the next reader. If you'd remove a comment and nothing would be lost, don't
+  add it in the first place. PRs that add comments restating the code next to it will
+  be asked to remove them.
+- **No speculative abstraction.** Don't add configuration, protocols, or generic
+  helpers for a use case that doesn't exist yet. Three similar lines beat a premature
+  abstraction.
+- **Don't add error handling for scenarios that can't happen.** Validate at real
+  boundaries (user input, network responses, decoding external data) — trust your own
+  internal code's guarantees elsewhere.
+- **Match the existing native-first philosophy.** Every visible control is plain
+  SwiftUI; `enketo-core`'s own rendered HTML is never shown to the user. If a change
+  would require showing the engine's own UI to get some capability, that's a sign it
+  belongs in `bridge.js` as a new headless API instead.
+
+## Testing expectations
+
+This is the single most important convention in this codebase: **a bug fix is not done
+until there's a test that would have caught it.** Manual verification (even careful
+manual verification against a real `WKWebView`) is not a substitute — this project has
+concrete history of "fixed" bugs that turned out to only be fixed in one environment
+(e.g. a macOS-hosted `WKWebView` scratch script behaving differently from the same code
+running on a real iOS host), caught only once a permanent automated test replaced the
+manual check.
+
+- **Pure logic** (`QuestionFlowEngine`, `Project.resolveEnketoURL`, `SubmissionStore`,
+  XML parsing, the Bikram Sambat calendar math) gets plain `XCTest` unit tests — fast,
+  no simulator needed for the Foundation-only packages.
+- **Anything touching the real engine's DOM** (a new `bridge.js` function, a fix to how
+  `Question` fields are extracted, a new question `Kind`) needs an integration test in
+  `EnketoEngineIntegrationTests.swift` that drives the actual `EnketoFormView`/
+  `EnketoFormState` through a real `WKWebView` — not a hand-rolled duplicate of the
+  logic, and not a bare macOS-hosted `WKWebView` script (that environment doesn't
+  reliably match how `enketo-core` renders on real iOS, e.g. `appearance="minimal"`
+  selects render completely differently under touch detection).
+- **A bug reported against a real-world form** should get a regression test using that
+  form's actual compiled XML (or as close a minimal reproduction as possible) — see
+  `RealFormEndToEndTests.swift` for the pattern: real pyxform-compiled XML embedded as
+  a fixture, not a hand-simplified approximation that might not reproduce the actual
+  DOM shape that caused the bug.
+- When you add a test to `EnketoEngineIntegrationTests.swift`, group related
+  assertions into as few test methods as reasonably possible. Each method spins up a
+  real `WKWebView`, which costs an actual WebContent process — too many in one test run
+  exhausts that pool and causes unrelated tests to fail with `WebProcessProxy::didClose`.
+- Before submitting, run the full test suite for every package you touched at least
+  twice in a row (`xcodebuild test`, not just once) — a couple of real bugs in this
+  codebase's own test helpers only showed up as intermittent flakes under full-suite
+  load, not in isolation.
+
+## Pull requests
+
+- Keep PRs focused — one logical change per PR is much easier to review than several
+  unrelated fixes bundled together.
+- Describe *why*, not just *what* — link the issue if there is one, and explain the
+  reasoning behind any non-obvious decision, the same way you would in a "why" code
+  comment.
+- Include the test(s) that cover your change (see above) — a PR fixing a bug without a
+  regression test will be asked to add one before merge.
+- Make sure `xcodegen generate` output is **not** committed — check `git status` before
+  pushing; the `.xcodeproj` is gitignored for a reason (it's fully regenerable from
+  `project.yml`, and committing it just creates merge-conflict noise).
+
+## Reporting bugs / requesting features
+
+Please use the issue templates — they ask for the specific information (repro steps,
+the actual XForm if the bug is form-specific, expected vs. actual behavior) that's
+needed to act on a report quickly. See `SECURITY.md` instead if what you found is a
+security vulnerability — please don't open a public issue for those.
+
+## Code of Conduct
+
+This project follows the Contributor Covenant — see `CODE_OF_CONDUCT.md`.

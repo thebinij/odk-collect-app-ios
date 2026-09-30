@@ -1,0 +1,22 @@
+# Xcode / XcodeGen generated project (regenerate with `xcodegen generate`)
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Build artifacts
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Local secrets / service configs — never commit real API keys
+GoogleService-Info.plist

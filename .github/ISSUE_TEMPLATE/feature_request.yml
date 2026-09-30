@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest an idea or enhancement for this project
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For anything beyond a small, obvious change, it helps to align on the approach
+        here before a PR is written — see `CONTRIBUTING.md`.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do that's currently hard or impossible?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you like this to work? Sketch the UI/API if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you thought about, and why you preferred this one.
+    validations:
+      required: false

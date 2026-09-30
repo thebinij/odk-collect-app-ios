@@ -1,0 +1,36 @@
+name: ODKCollect
+options:
+  bundleIdPrefix: np.com.yipl
+  deploymentTarget:
+    iOS: "16.4"
+configs:
+  Debug: debug
+  Release: release
+packages:
+  ODKCollectUI:
+    path: Packages/ODKCollectUI
+targets:
+  ODKCollect:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.4"
+    sources:
+      - path: ODKCollect
+        excludes:
+          - Info.plist
+          - PrivacyInfo.xcprivacy
+    resources:
+      - path: ODKCollect/PrivacyInfo.xcprivacy
+    dependencies:
+      - package: ODKCollectUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: np.com.yipl.odk
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.0"
+        SWIFT_VERSION: 6.0
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ODKCollect/Info.plist

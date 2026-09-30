@@ -1,0 +1,69 @@
+name: Bug report
+description: Something isn't working the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. If this is specific to filling out
+        a particular form (a question not showing, wrong validation, etc.), attaching
+        that form's XML (or the XLSForm) makes it dramatically faster to fix — see the
+        field below.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. What did you expect instead?
+      placeholder: |
+        Expected: ...
+        Actual: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to see the bug yourself.
+      placeholder: |
+        1. Open a form with ...
+        2. Answer question ... with ...
+        3. Tap ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: form-xml
+    attributes:
+      label: Form XML (if this is about a specific form/question)
+      description: >
+        Paste the compiled XForm XML, or attach the .xlsx/.xml file. If you can narrow
+        it to a minimal form that still reproduces the issue, even better.
+      render: xml
+    validations:
+      required: false
+
+  - type: input
+    id: ios-version
+    attributes:
+      label: iOS version
+      placeholder: "e.g. iOS 17.4, or Simulator iPhone 17 Pro"
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version / commit
+      description: The commit hash you're on, or the version if this is a tagged release.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / screenshots
+      description: Anything from the Xcode console, or screenshots showing the issue.
+    validations:
+      required: false
