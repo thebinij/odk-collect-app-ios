@@ -20,12 +20,20 @@ of which this pipeline requires.
 
 ## One-time setup
 
-### 1. Apple: a distribution certificate + ad-hoc provisioning profile
+### 1. Pick your bundle ID
+
+This repo ships no real bundle ID (see `Config.xcconfig.example`/"Local signing setup"
+in `CONTRIBUTING.md`) — decide on the one you're actually shipping and register it as a
+GitHub Actions **Variable** named `IOS_BUNDLE_ID` (step 5 below). The workflow writes it
+into its own `Config.xcconfig` and the export's `ExportOptions.plist` at build time, so
+nothing here is hardcoded.
+
+### 2. Apple: a distribution certificate + ad-hoc provisioning profile
 
 You need an **Apple Distribution** certificate and an **Ad Hoc** provisioning profile
-for this app's bundle ID (`np.com.yipl.odk`, or whatever you've changed it to in
-`project.yml`), registered in your Apple Developer account. If you don't have these
-yet, create them in Xcode (Settings → Accounts → Manage Certificates) or at
+for the bundle ID you picked above, registered in your Apple Developer account. If you
+don't have these yet, create them in Xcode (Settings → Accounts → Manage Certificates)
+or at
 [developer.apple.com](https://developer.apple.com/account/resources/certificates/list).
 
 **Export the certificate as a `.p12`:**
@@ -53,7 +61,7 @@ This is `IOS_PROVISIONING_PROFILE_BASE64`. (The workflow reads the profile's UUI
 Team ID directly out of this file at build time — you don't need to supply those
 separately.)
 
-### 2. Firebase: a service account for the App Distribution API
+### 3. Firebase: a service account for the App Distribution API
 
 1. In the [Firebase console](https://console.firebase.google.com), open **Project
    settings → Service accounts**.
@@ -66,19 +74,21 @@ separately.)
    ```
    This is `FIREBASE_SERVICE_ACCOUNT_BASE64`.
 
-### 3. Firebase: find your iOS App ID
+### 4. Firebase: find your iOS App ID
 
-In **Project settings → General**, under "Your apps," find the iOS app for this bundle
-ID — its **App ID** looks like `1:1234567890:ios:abcdef1234567890`. That's
-`FIREBASE_IOS_APP_ID`.
+In **Project settings → General**, under "Your apps," find the iOS app for the bundle
+ID you picked in step 1 — its **App ID** looks like `1:1234567890:ios:abcdef1234567890`.
+That's `FIREBASE_IOS_APP_ID`. (No app registered yet for that bundle ID? `firebase
+apps:create IOS "<display name>" --bundle-id <your bundle id> --project <firebase
+project id>` creates one from the CLI.)
 
-### 4. Firebase: create a tester group
+### 5. Firebase: create a tester group
 
 In **App Distribution → Testers & Groups**, create a group (e.g. `testers`) and add
 the people who should receive builds. The group's name is `FIREBASE_TESTER_GROUPS`
 (comma-separate multiple group names if you have more than one).
 
-### 5. Add everything to GitHub
+### 6. Add everything to GitHub
 
 In this repo's **Settings → Secrets and variables → Actions**:
 
@@ -86,19 +96,20 @@ In this repo's **Settings → Secrets and variables → Actions**:
 
 | Name | Value |
 |---|---|
-| `IOS_DIST_CERTIFICATE_BASE64` | from step 1 |
+| `IOS_DIST_CERTIFICATE_BASE64` | from step 2 |
 | `IOS_DIST_CERTIFICATE_PASSWORD` | the password you set exporting the `.p12` |
-| `IOS_PROVISIONING_PROFILE_BASE64` | from step 1 |
+| `IOS_PROVISIONING_PROFILE_BASE64` | from step 2 |
 | `CI_KEYCHAIN_PASSWORD` | any password of your choosing — used only to protect the temporary keychain created during the CI run itself |
-| `FIREBASE_SERVICE_ACCOUNT_BASE64` | from step 2 |
+| `FIREBASE_SERVICE_ACCOUNT_BASE64` | from step 3 |
 
 **Variables** (Variables tab — not secret, but easier to change without touching the
 workflow file):
 
 | Name | Value |
 |---|---|
-| `FIREBASE_IOS_APP_ID` | from step 3 |
-| `FIREBASE_TESTER_GROUPS` | from step 4 |
+| `IOS_BUNDLE_ID` | from step 1 |
+| `FIREBASE_IOS_APP_ID` | from step 4 |
+| `FIREBASE_TESTER_GROUPS` | from step 5 |
 
 ## Shipping a build
 

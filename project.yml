@@ -1,6 +1,6 @@
 name: ODKCollect
 options:
-  bundleIdPrefix: np.com.yipl
+  bundleIdPrefix: com.example
   deploymentTarget:
     iOS: "16.4"
 configs:
