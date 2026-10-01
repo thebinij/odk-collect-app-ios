@@ -79,9 +79,8 @@ git config core.hooksPath scripts/git-hooks
 Small, obvious fixes (typos, a clear bug with an obvious one-line fix) can go straight
 to a PR. For anything bigger — a new feature, a behavior change, a refactor spanning
 multiple files — please open an issue first describing what you want to do and why.
-This project has a fairly specific architecture (see `README.md`'s Architecture
-section) and it's much cheaper to align on an approach before code is written than
-after.
+This project has a fairly specific architecture (see `ARCHITECTURE.md`) and it's much
+cheaper to align on an approach before code is written than after.
 
 ## Project structure
 
