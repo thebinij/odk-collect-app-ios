@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Server URL + credentials. Fields bind straight to `ProjectStore` and persist as
 /// you type — there's no separate Save action.
-public struct ProjectSettingsView: View {
+public struct ServerSettingsView: View {
     @ObservedObject private var projectStore: ProjectStore
 
     @State private var isTestingConnection = false
@@ -23,13 +23,7 @@ public struct ProjectSettingsView: View {
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                TextField("Username", text: $projectStore.username)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    // Paired with a secure field below, iOS treats this as a login
-                    // form's username and offers its own "Save Password" prompt on
-                    // leaving the screen unless explicitly opted out here too.
-                    .textContentType(UITextContentType(rawValue: ""))
+                ManualEntryTextField(placeholder: "Username", text: $projectStore.username)
                 ManualEntrySecureField(placeholder: "Password", text: $projectStore.password)
 
                 Button {
@@ -58,7 +52,8 @@ public struct ProjectSettingsView: View {
                 Text("Removes the saved server URL, username, and password from this device.")
             }
         }
-        .navigationTitle("Project Settings")
+        .navigationTitle("Server Settings")
+        .navigationBarTitleDisplayMode(.inline)
         .alert("Clear Project?", isPresented: $isShowingClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear", role: .destructive) {

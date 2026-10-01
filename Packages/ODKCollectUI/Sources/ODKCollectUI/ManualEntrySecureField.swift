@@ -62,3 +62,49 @@ final class NoPasteTextField: UITextField {
         return super.canPerformAction(action, withSender: sender)
     }
 }
+
+/// The username counterpart to `ManualEntrySecureField`. SwiftUI's `TextField`
+/// exposes `textContentType` only as a view modifier, which doesn't always reach the
+/// underlying `UITextField` as reliably as setting it directly — and paired with a
+/// secure field below, an unsuppressed username field is enough on its own for iOS to
+/// still treat the pair as a login form and offer its "Save Password" prompt. Dropping
+/// to `UITextField` here guarantees the override actually lands.
+struct ManualEntryTextField: UIViewRepresentable {
+    let placeholder: String
+    @Binding var text: String
+
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.placeholder = placeholder
+        textField.font = .preferredFont(forTextStyle: .body)
+        textField.borderStyle = .none
+        textField.autocorrectionType = .no
+        textField.autocapitalizationType = .none
+        textField.textContentType = UITextContentType(rawValue: "")
+        textField.delegate = context.coordinator
+        textField.addTarget(context.coordinator, action: #selector(Coordinator.textChanged), for: .editingChanged)
+        return textField
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        let text: Binding<String>
+
+        init(text: Binding<String>) {
+            self.text = text
+        }
+
+        @objc func textChanged(_ textField: UITextField) {
+            text.wrappedValue = textField.text ?? ""
+        }
+    }
+}

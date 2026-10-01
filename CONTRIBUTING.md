@@ -110,6 +110,35 @@ manual check.
   pushing; the `.xcodeproj` is gitignored for a reason (it's fully regenerable from
   `project.yml`, and committing it just creates merge-conflict noise).
 
+## Updating the changelog
+
+`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Any
+PR that changes behavior a user of the app (or a consumer of `ODKWebEngine`/
+`OpenRosaKit` as a package) could notice needs an entry under `## [Unreleased]`:
+
+- **Pick the right section.** `### Added` for new capability, `### Changed` for a
+  behavior change to something that already existed, `### Fixed` for a bug fix. Don't
+  invent other section headers — if it doesn't fit one of Keep a Changelog's own
+  categories (Added/Changed/Deprecated/Removed/Fixed/Security), it likely belongs in
+  `README.md` instead (e.g. ongoing constraints belong in "Known limitations" there,
+  not in the changelog — the changelog records *changes*, not standing state).
+- **Write it for someone who didn't see the code.** Say what was actually wrong/added
+  and, for a fix, what the user-visible symptom was — not just the internal mechanism.
+  "Fixed a validation bug" tells a reader nothing; "correcting an answer no longer
+  leaves Next permanently disabled" does.
+- **Name the real thing, not the task.** Describe the behavior, not the conversation
+  that produced it — no "per user request", no referencing an issue/PR number inline
+  (GitHub already links commits to PRs), no first-person or casual phrasing. Write it
+  the way you'd write documentation, not a commit message aside.
+- **One bullet per change**, ideally one sentence plus a second only if the "why" needs
+  it. If a PR bundles several unrelated fixes (it shouldn't — see "Pull requests"
+  above), give each its own bullet rather than merging them.
+- **Skip pure internals.** A refactor, test-only change, or internal rename with no
+  observable effect doesn't need an entry — the changelog is for users of the app/
+  packages, not a log of every commit.
+- Leave `## [Unreleased]` as the only version heading until a release actually ships;
+  don't pre-create a version number for work still in progress.
+
 ## Reporting bugs / requesting features
 
 Please use the issue templates — they ask for the specific information (repro steps,

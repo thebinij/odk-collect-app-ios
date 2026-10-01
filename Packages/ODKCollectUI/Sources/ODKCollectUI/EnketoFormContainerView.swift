@@ -1,6 +1,5 @@
 import ODKWebEngine
 import OpenRosaKit
-import ProjectSettingsKit
 import SwiftUI
 
 /// Hosts a downloaded (or previously-saved-draft) XForm in the bundled Enketo engine.
@@ -9,11 +8,14 @@ import SwiftUI
 ///   local `SubmissionStore` as a `.draft`, so progress can be checked out at any
 ///   point and resumed later, fully offline (the XForm definition is saved alongside
 ///   the answers).
-/// - "Send" validates, then always saves the completed form locally first as
-///   `.readyToSend` — so nothing is lost without a connection — before immediately
-///   attempting the OpenRosa upload (HEAD `/submission` to confirm credentials, then
-///   POST the instance XML). If that upload fails, the entry simply stays
-///   `.readyToSend` for a manual retry from the Ready to Send list.
+/// - "Send" validates, then saves the completed form locally as `.readyToSend` —
+///   it never uploads from here directly. Whether (and when) it actually
+///   reaches the server from that point on is entirely `AutoSendCoordinator`'s
+///   call, driven by the Auto Send setting (Settings → Form Management → Form
+///   Submission): Off leaves it waiting for an explicit **Send Now** tap in
+///   Ready to Send; any other mode uploads it automatically once a matching
+///   connection is available, usually within moments of this save. This file
+///   has exactly one job for a completed form: get it safely onto disk.
 ///
 /// Both actions update the same `SubmissionStore` entry in place once one exists for
 /// this session (starting from `existingSubmissionID` when resuming a draft), so
@@ -24,8 +26,6 @@ public struct EnketoFormContainerView: View {
     private let xformXML: String
     private let instanceXML: String?
     private let existingSubmissionID: String?
-    private let project: Project
-    private let password: String
     private let submissionStore: SubmissionStore
     private let onChangeForm: () -> Void
 
@@ -50,8 +50,6 @@ public struct EnketoFormContainerView: View {
         xformXML: String,
         instanceXML: String? = nil,
         existingSubmissionID: String? = nil,
-        project: Project,
-        password: String,
         submissionStore: SubmissionStore,
         onChangeForm: @escaping () -> Void
     ) {
@@ -60,8 +58,6 @@ public struct EnketoFormContainerView: View {
         self.xformXML = xformXML
         self.instanceXML = instanceXML
         self.existingSubmissionID = existingSubmissionID
-        self.project = project
-        self.password = password
         self.submissionStore = submissionStore
         self.onChangeForm = onChangeForm
         _currentSubmissionID = State(initialValue: existingSubmissionID)
@@ -177,16 +173,10 @@ public struct EnketoFormContainerView: View {
                         message: Text("The form contains errors. Please review the highlighted questions."),
                         dismissButton: .default(Text("OK"))
                     )
-                case .sent:
-                    return Alert(
-                        title: Text("Sent"),
-                        message: Text("The form was saved and sent successfully."),
-                        dismissButton: .default(Text("OK")) { onChangeForm() }
-                    )
-                case .savedOffline:
+                case .readyToSend:
                     return Alert(
                         title: Text("Saved"),
-                        message: Text("No connection right now, so the form was saved to Ready to Send — it'll upload from there once you're back online."),
+                        message: Text("The form was saved to Ready to Send. It'll upload automatically if Auto Send is on and you're connected, or you can send it anytime from Ready to Send."),
                         dismissButton: .default(Text("OK")) { onChangeForm() }
                     )
                 case .draftSaved:
@@ -211,17 +201,15 @@ public struct EnketoFormContainerView: View {
         }
     }
 
-    /// Always saves the completed form locally first as `.readyToSend`, then tries to
-    /// upload it right away. If the upload fails (most commonly: no network), the
-    /// saved copy simply stays `.readyToSend` — visible in the Ready to Send list for
-    /// a manual retry later — it is never lost.
+    /// Saves the completed form locally as `.readyToSend` — and nothing else. Upload
+    /// is entirely `AutoSendCoordinator`'s job from here (see the type's doc comment);
+    /// this method never touches the network.
     private func submit(xmlString: String) async {
         isSubmitting = true
         defer { isSubmitting = false }
 
-        let saved: SubmissionStore.Submission
         do {
-            saved = try submissionStore.save(
+            let saved = try submissionStore.save(
                 xml: xmlString,
                 xformXML: xformXML,
                 formID: formID,
@@ -231,19 +219,9 @@ public struct EnketoFormContainerView: View {
                 existingID: currentSubmissionID
             )
             currentSubmissionID = saved.id
+            submissionAlert = .readyToSend
         } catch {
             submissionAlert = .failure(error.localizedDescription)
-            return
-        }
-
-        let client = OpenRosaClient(serverURL: project.serverURL, username: project.username, password: password)
-        do {
-            try await client.probeSubmission()
-            try await client.submit(xml: Data(xmlString.utf8), attachments: submissionAttachments())
-            submissionStore.markSent(saved.id)
-            submissionAlert = .sent
-        } catch {
-            submissionAlert = .savedOffline
         }
     }
 
@@ -269,26 +247,18 @@ public struct EnketoFormContainerView: View {
             submissionAlert = .failure(error.localizedDescription)
         }
     }
-
-    private func submissionAttachments() -> [SubmissionAttachment] {
-        attachments.map { filename, data in
-            SubmissionAttachment(filename: filename, contentType: SubmissionAttachment.contentType(forFilename: filename), data: data)
-        }
-    }
 }
 
 private enum SubmissionAlert: Identifiable {
     case validationFailed
-    case sent
-    case savedOffline
+    case readyToSend
     case draftSaved
     case failure(String)
 
     var id: String {
         switch self {
         case .validationFailed: return "validationFailed"
-        case .sent: return "sent"
-        case .savedOffline: return "savedOffline"
+        case .readyToSend: return "readyToSend"
         case .draftSaved: return "draftSaved"
         case .failure(let message): return "failure-\(message)"
         }

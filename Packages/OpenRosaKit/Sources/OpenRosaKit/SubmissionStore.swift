@@ -39,6 +39,12 @@ public final class SubmissionStore: ObservableObject {
     private let directory: URL
     private let fileManager = FileManager.default
 
+    /// Transient (never persisted) record of which submissions currently have an
+    /// upload in flight, so two send paths — a manual tap and an automatic sweep —
+    /// can never POST the same submission twice. Meaningless across launches, which
+    /// is fine: nothing is in flight at launch.
+    private var sendingIDs: Set<String> = []
+
     public init(directory: URL? = nil) {
         if let directory {
             self.directory = directory
@@ -134,6 +140,20 @@ public final class SubmissionStore: ObservableObject {
         submissions[index].status = .sent
         submissions[index].sentAt = Date()
         try? writeMeta(submissions[index])
+    }
+
+    /// Claims a submission for upload, returning `false` if it isn't currently
+    /// `.readyToSend` or another send path already has it in flight. Callers must
+    /// pair a successful claim with `endSending(_:)` once the attempt finishes
+    /// (success or failure).
+    public func beginSending(_ id: String) -> Bool {
+        guard submissions.first(where: { $0.id == id })?.status == .readyToSend else { return false }
+        return sendingIDs.insert(id).inserted
+    }
+
+    /// Releases a claim taken by `beginSending(_:)`.
+    public func endSending(_ id: String) {
+        sendingIDs.remove(id)
     }
 
     public func delete(_ id: String) throws {
