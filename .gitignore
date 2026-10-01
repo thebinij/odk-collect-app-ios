@@ -21,3 +21,7 @@ xcuserdata/
 
 # Local secrets / service configs — never commit real API keys
 GoogleService-Info.plist
+
+# Local signing identifiers (bundle ID, Apple Developer Team) — copy
+# Config.xcconfig.example to Config.xcconfig and fill in your own; never commit it
+/Config.xcconfig

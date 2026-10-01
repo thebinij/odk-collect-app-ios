@@ -141,9 +141,7 @@ public struct RootView: View {
                 } label: {
                     Text("Ready to Send")
                         .font(.headline)
-                        // Bold signals there's something waiting to go out — matches
-                        // the "nothing is ever silently lost" guarantee this screen
-                        // gives for submissions stuck here (usually just no network).
+                        // Bold when something's actually waiting to go out.
                         .fontWeight(submissionStore.readyToSendSubmissions.isEmpty ? nil : .bold)
                         .frame(maxWidth: .infinity)
                 }

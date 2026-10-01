@@ -6,6 +6,9 @@ options:
 configs:
   Debug: debug
   Release: release
+configFiles:
+  Debug: Config.xcconfig
+  Release: Config.xcconfig
 packages:
   ODKCollectUI:
     path: Packages/ODKCollectUI
@@ -34,7 +37,6 @@ targets:
       - package: ODKCollectUI
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: np.com.yipl.odk
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
