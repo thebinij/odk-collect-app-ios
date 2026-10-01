@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Blocks commits that bake a personal Apple Developer Team or a non-placeholder
+# bundle ID into the shared project.yml. XcodeGen regenerates ODKCollect.xcodeproj
+# entirely from this file for every contributor, so a personal override committed
+# here silently becomes everyone else's default on their next `xcodegen generate`
+# — see CONTRIBUTING.md's "Local signing setup" for how to keep yours out of git.
+set -euo pipefail
+
+if ! git diff --cached --name-only | grep -qx "project.yml"; then
+    exit 0
+fi
+
+staged=$(git show :project.yml)
+
+if echo "$staged" | grep -q "DEVELOPMENT_TEAM:"; then
+    echo "error: project.yml stages a DEVELOPMENT_TEAM — that's a personal Apple" >&2
+    echo "Developer Team ID and must not be committed. Keep it local instead:" >&2
+    echo "  git update-index --skip-worktree project.yml" >&2
+    echo "See CONTRIBUTING.md's \"Local signing setup\" section." >&2
+    exit 1
+fi
+
+if ! echo "$staged" | grep -q "PRODUCT_BUNDLE_IDENTIFIER: np.com.yipl.odk$"; then
+    echo "error: project.yml's PRODUCT_BUNDLE_IDENTIFIER no longer matches the" >&2
+    echo "shared placeholder (np.com.yipl.odk). If this is your own bundle ID for" >&2
+    echo "local testing, keep it out of git instead:" >&2
+    echo "  git update-index --skip-worktree project.yml" >&2
+    echo "See CONTRIBUTING.md's \"Local signing setup\" section." >&2
+    exit 1
+fi
+
+exit 0

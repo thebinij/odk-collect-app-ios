@@ -16,6 +16,43 @@ open ODKCollect.xcodeproj
 You'll need Xcode itself (not just Command Line Tools) for the iOS SDK. See `README.md`
 for the full setup/first-run walkthrough.
 
+## Local signing setup
+
+`project.yml` ships with a placeholder bundle ID (`np.com.yipl.odk`) and no Apple
+Developer Team — nobody's personal/org identifiers belong in a public repo, and
+XcodeGen regenerates `ODKCollect.xcodeproj` entirely from this file for every
+contributor, so anything committed here silently becomes everyone else's default on
+their next `xcodegen generate`.
+
+To Run or Archive with your own identifiers locally, without ever risking committing
+them:
+
+1. One-time per clone — enable the pre-commit guard that blocks this mistake if it
+   happens anyway:
+   ```sh
+   git config core.hooksPath scripts/git-hooks
+   ```
+2. Edit `project.yml` yourself: change `PRODUCT_BUNDLE_IDENTIFIER` to something unique
+   you control, and add `DEVELOPMENT_TEAM: <your team ID>` next to
+   `CODE_SIGN_STYLE: Automatic`.
+3. Tell git to stop tracking further changes to this file locally, so your edit can
+   never get staged or committed by accident (including by a broad `git add -A`):
+   ```sh
+   git update-index --skip-worktree project.yml
+   ```
+4. `xcodegen generate` as usual — your identifiers now survive every regenerate.
+
+If you later need to pull upstream changes to `project.yml` (a new target setting,
+dependency, etc.), temporarily restore tracking first — `git status` won't show the
+file as modified while skip-worktree is active, so a plain `git pull` can otherwise
+leave your copy silently out of date:
+```sh
+git update-index --no-skip-worktree project.yml
+git pull
+# reapply your PRODUCT_BUNDLE_IDENTIFIER / DEVELOPMENT_TEAM edits, then:
+git update-index --skip-worktree project.yml
+```
+
 ## Before you start: open an issue first for anything non-trivial
 
 Small, obvious fixes (typos, a clear bug with an obvious one-line fix) can go straight

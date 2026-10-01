@@ -114,12 +114,16 @@ xcodegen generate       # produces ODKCollect.xcodeproj
 open ODKCollect.xcodeproj
 ```
 
-In Xcode: select the **ODKCollect** target → **Signing & Capabilities** → pick your own
-Team (signing is left on Automatic, but no team is committed to `project.yml` —
-nobody's Apple Developer identity belongs in a public repo). Note this selection lives
-in the generated `.xcodeproj`, not `project.yml`, so re-running `xcodegen generate`
-later will reset it back to "None" and you'll need to pick your Team again. Then pick
-any iOS 16.4+ simulator (or a real device) and **Run** (⌘R).
+`project.yml` ships with a placeholder bundle ID and no Apple Developer Team — nobody's
+identity belongs in a public repo, and XcodeGen regenerates the whole `.xcodeproj` from
+this file, so you'll need to set your own to Run or Archive. For a quick Simulator run,
+just pick your Team in Xcode's **Signing & Capabilities** tab after opening (it'll reset
+to "None" on your next `xcodegen generate`, since that selection lives in the
+regenerated `.xcodeproj`, not in `project.yml`). For anything more durable — a real
+device, Archive — see `CONTRIBUTING.md`'s "Local signing setup" instead, which keeps
+your identifiers in `project.yml` itself without ever risking a commit.
+
+Then pick any iOS 16.4+ simulator (or a real device) and **Run** (⌘R).
 
 **First run:** Home shows a "+ Start new form" button (always enabled; tapping it with
 no project configured prompts you to set one up) and a gear icon top-right for
