@@ -4,7 +4,7 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>np.com.yipl.odk.autosend</string>
+		<string>com.example.odk.autosend</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>

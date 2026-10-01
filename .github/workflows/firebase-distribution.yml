@@ -70,6 +70,15 @@ jobs:
           echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
           echo "TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
 
+      - name: Write local signing config
+        env:
+          BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID }}
+        run: |
+          cat > Config.xcconfig <<EOF
+          PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID
+          DEVELOPMENT_TEAM = $TEAM_ID
+          EOF
+
       - name: Archive
         run: |
           xcodebuild archive \
@@ -86,6 +95,8 @@ jobs:
             PROVISIONING_PROFILE="$PROFILE_UUID"
 
       - name: Export .ipa
+        env:
+          BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID }}
         run: |
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -100,7 +111,7 @@ jobs:
               <string>manual</string>
               <key>provisioningProfiles</key>
               <dict>
-                  <key>np.com.yipl.odk</key>
+                  <key>$BUNDLE_ID</key>
                   <string>$PROFILE_UUID</string>
               </dict>
           </dict>

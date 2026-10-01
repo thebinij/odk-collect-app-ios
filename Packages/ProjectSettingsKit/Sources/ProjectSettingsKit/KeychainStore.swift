@@ -8,7 +8,7 @@ public struct KeychainStore {
     private let service: String
     private let account: String
 
-    public init(service: String = "com.yipl.odkcollect.project", account: String = "password") {
+    public init(service: String = "com.example.odk.project", account: String = "password") {
         self.service = service
         self.account = account
     }

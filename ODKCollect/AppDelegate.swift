@@ -13,7 +13,7 @@ import UIKit
 /// conditions — there is no way for a third-party app to guarantee background
 /// execution on iOS, with or without this framework.
 final class AppDelegate: NSObject, UIApplicationDelegate {
-    static let autoSendTaskIdentifier = "np.com.yipl.odk.autosend"
+    static let autoSendTaskIdentifier = "com.example.odk.autosend"
 
     func application(
         _ application: UIApplication,
