@@ -6,6 +6,35 @@ reading it fully before opening a PR will save you a review round-trip.
 
 ## Getting set up
 
+### 1. Fork & clone
+
+You won't have push access to `thebinij/odk-collect-app-ios` directly — fork it, then
+clone your fork:
+
+```sh
+gh repo fork thebinij/odk-collect-app-ios --clone && cd odk-collect-app-ios
+# without the GitHub CLI: fork via the GitHub web UI instead, then
+#   git clone git@github.com:<your-username>/odk-collect-app-ios.git
+#   cd odk-collect-app-ios
+git remote add upstream git@github.com:thebinij/odk-collect-app-ios.git
+```
+
+To pull in upstream changes later: `git fetch upstream && git merge upstream/main`.
+
+### 2. Editor
+
+- **Xcode** (required, latest stable) — the iOS SDK ships inside `Xcode.app`, not
+  Command Line Tools alone. Needed for anything touching `ODKCollectUI`/`ODKWebEngine`
+  (WebKit/SwiftUI), running the app, or Archiving.
+- **VS Code** (optional) — with the
+  [Swift extension](https://marketplace.visualstudio.com/items?itemName=swiftlang.swift-vscode)
+  (SourceKit-LSP), it works fine for `OpenRosaKit`/`ProjectSettingsKit` — the two
+  pure-Foundation packages that build/test via plain `swift build`/`swift test`, no
+  simulator needed. It can't run the app or build `ODKCollectUI`/`ODKWebEngine`
+  (WebKit/SwiftUI) — those need Xcode.
+
+### 3. Generate the project
+
 ```sh
 brew install xcodegen   # if you don't already have it
 xcodegen generate       # produces ODKCollect.xcodeproj — not committed, regenerate
@@ -13,10 +42,9 @@ xcodegen generate       # produces ODKCollect.xcodeproj — not committed, regen
 open ODKCollect.xcodeproj
 ```
 
-You'll need Xcode itself (not just Command Line Tools) for the iOS SDK. See `README.md`
-for the full setup/first-run walkthrough.
+See `README.md`'s "Setup & first build" for the first-run walkthrough once it's open.
 
-## Local signing setup
+### 4. Local signing setup
 
 `project.yml` carries no bundle ID or Apple Developer Team directly — those live in
 `Config.xcconfig`, which is gitignored and never committed. XcodeGen regenerates
@@ -127,8 +155,17 @@ manual check.
   codebase's own test helpers only showed up as intermittent flakes under full-suite
   load, not in isolation.
 
-## Pull requests
+## Branching & pull requests
 
+- Branch off `main`: `git checkout -b <type>/<short-description>` — e.g.
+  `fix/save-password-prompt`, `feat/local-signing-xcconfig`, `docs/readme-cleanup`.
+  Common prefixes: `feat`, `fix`, `chore`, `docs`; pick whichever best describes the
+  change.
+- Push to **your fork**, then open the PR from your branch against this repo's `main`:
+  ```sh
+  git push -u origin <your-branch-name>
+  gh pr create --web   # or click the "Compare & pull request" banner on GitHub
+  ```
 - Keep PRs focused — one logical change per PR is much easier to review than several
   unrelated fixes bundled together.
 - Describe *why*, not just *what* — link the issue if there is one, and explain the
@@ -164,8 +201,8 @@ PR that changes behavior a user of the app (or a consumer of `ODKWebEngine`/
   (GitHub already links commits to PRs), no first-person or casual phrasing. Write it
   the way you'd write documentation, not a commit message aside.
 - **One bullet per change**, ideally one sentence plus a second only if the "why" needs
-  it. If a PR bundles several unrelated fixes (it shouldn't — see "Pull requests"
-  above), give each its own bullet rather than merging them.
+  it. If a PR bundles several unrelated fixes (it shouldn't — see "Branching & pull
+  requests" above), give each its own bullet rather than merging them.
 - **Skip pure internals.** A refactor, test-only change, or internal rename with no
   observable effect doesn't need an entry — the changelog is for users of the app/
   packages, not a log of every commit.
