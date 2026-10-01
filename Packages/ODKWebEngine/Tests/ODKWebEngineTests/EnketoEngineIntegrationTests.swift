@@ -283,13 +283,18 @@ final class EnketoEngineIntegrationTests: XCTestCase {
         let state = loadForm(Self.repeatForm)
         XCTAssertEqual(state.repeats.first(where: { $0.ref == "/data/g/r" })?.count, 1)
 
-        waitForQuestionsUpdate(state) {
+        // `waitForQuestionsUpdate` only waits for *a* next emission — susceptible to
+        // the same stale-in-flight-emission race documented on `waitForQuestions`
+        // above (a late, pre-action "questions" message can arrive right after
+        // `addRepeatInstance`/`removeRepeatInstance` and satisfy it before the real
+        // post-action one lands). Waiting on the actual predicate sidesteps it.
+        waitForQuestions(state, until: { $0.filter { $0.ref == "/data/g/r/item" }.count == 2 }) {
             state.addRepeatInstance(repeatRef: "/data/g/r")
         }
         XCTAssertEqual(state.repeats.first(where: { $0.ref == "/data/g/r" })?.count, 2)
         XCTAssertEqual(state.questions.filter { $0.ref == "/data/g/r/item" }.count, 2)
 
-        waitForQuestionsUpdate(state) {
+        waitForQuestions(state, until: { $0.filter { $0.ref == "/data/g/r/item" }.count == 1 }) {
             state.removeRepeatInstance(repeatRef: "/data/g/r", index: 1)
         }
         XCTAssertEqual(state.repeats.first(where: { $0.ref == "/data/g/r" })?.count, 1)
