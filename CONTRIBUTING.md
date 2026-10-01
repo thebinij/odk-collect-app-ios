@@ -146,6 +146,9 @@ manual check.
 - Make sure `xcodegen generate` output is **not** committed — check `git status` before
   pushing; the `.xcodeproj` is gitignored for a reason (it's fully regenerable from
   `project.yml`, and committing it just creates merge-conflict noise).
+- Make sure `project.yml` itself isn't carrying your personal bundle ID or
+  `DEVELOPMENT_TEAM` (see "Local signing setup" above) — the pre-commit hook catches
+  this if it's enabled, but double-check if you haven't set that up.
 
 ## Updating the changelog
 
