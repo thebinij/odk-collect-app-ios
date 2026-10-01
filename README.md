@@ -13,10 +13,9 @@ repeats) still runs on the real [Enketo](https://enketo.org) engine (`enketo-cor
 `WKWebView` purely as an XPath/validation engine — its own rendered HTML is never shown.
 
 > **Naming/branding note:** this project is unaffiliated with the ODK organization and
-> is not the official ODK Collect app. It uses its own bundle identifier prefix
-> (`np.com.yipl`, see `project.yml`) precisely to avoid colliding with the real app. If
-> you fork this, update `project.yml`'s `bundleIdPrefix` and `PRODUCT_BUNDLE_IDENTIFIER`
-> to your own before distributing it anywhere.
+> is not the official ODK Collect app. If you fork this, set your own bundle ID in
+> `Config.xcconfig` (see "Setup & first build" below) and `project.yml`'s
+> `bundleIdPrefix` before distributing it anywhere.
 
 ## Why headless Enketo instead of a WebView UI?
 
@@ -114,16 +113,17 @@ xcodegen generate       # produces ODKCollect.xcodeproj
 open ODKCollect.xcodeproj
 ```
 
-`project.yml` ships with a placeholder bundle ID and no Apple Developer Team — nobody's
-identity belongs in a public repo, and XcodeGen regenerates the whole `.xcodeproj` from
-this file, so you'll need to set your own to Run or Archive. For a quick Simulator run,
-just pick your Team in Xcode's **Signing & Capabilities** tab after opening (it'll reset
-to "None" on your next `xcodegen generate`, since that selection lives in the
-regenerated `.xcodeproj`, not in `project.yml`). For anything more durable — a real
-device, Archive — see `CONTRIBUTING.md`'s "Local signing setup" instead, which keeps
-your identifiers in `project.yml` itself without ever risking a commit.
+Pick any iOS 16.4+ simulator and **Run** (⌘R) — that's it, no signing setup needed.
 
-Then pick any iOS 16.4+ simulator (or a real device) and **Run** (⌘R).
+Running on a real device or Archiving for distribution needs your own Apple Developer
+Team, since this repo can't ship one (nobody's identifiers belong in a public project):
+
+```sh
+cp Config.xcconfig.example Config.xcconfig   # gitignored — stays local to you
+```
+Open `Config.xcconfig` and fill in `DEVELOPMENT_TEAM` (Xcode → Settings → Accounts →
+your account → the ID next to your team's name), then `xcodegen generate` again. See
+`CONTRIBUTING.md`'s "Local signing setup" for more.
 
 **First run:** Home shows a "+ Start new form" button (always enabled; tapping it with
 no project configured prompts you to set one up) and a gear icon top-right for
@@ -135,8 +135,9 @@ no external Enketo webform involved.
 
 ## Making this your own
 
-- **App identity** — `project.yml`: `PRODUCT_BUNDLE_IDENTIFIER`, `options.bundleIdPrefix`,
-  top-level `name:`; `ODKCollect/Info.plist`: `CFBundleDisplayName`.
+- **App identity** — `Config.xcconfig`: `PRODUCT_BUNDLE_IDENTIFIER`; `project.yml`:
+  `options.bundleIdPrefix`, top-level `name:`; `ODKCollect/Info.plist`:
+  `CFBundleDisplayName`.
 - **App icon / splash / accent color** — `ODKCollect/Assets.xcassets`.
 - **Look and feel** — everything visible lives in `Packages/ODKCollectUI`; the three
   packages it composes have no UI of their own.
