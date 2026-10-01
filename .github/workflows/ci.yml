@@ -1,9 +1,16 @@
 name: CI
 
+# macOS runners bill at 10x the minutes of Linux ones — the paths-ignore below skips
+# the whole workflow for doc/config-only changes (the common case for this repo), and
+# concurrency cancels a PR's stale runs the moment a new push supersedes them, so you're
+# never paying for two sets of macOS runners on the same PR at once.
 on:
-  push:
-    branches: [main]
   pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,6 +20,7 @@ jobs:
   foundation-packages:
     name: swift test (${{ matrix.package }})
     runs-on: macos-14
+    timeout-minutes: 15
     strategy:
       matrix:
         package: [OpenRosaKit, ProjectSettingsKit]
@@ -21,6 +29,10 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+      - uses: actions/cache@v4
+        with:
+          path: Packages/${{ matrix.package }}/.build
+          key: spm-${{ runner.os }}-${{ matrix.package }}-${{ hashFiles(format('Packages/{0}/Package.swift', matrix.package)) }}
       - name: swift test
         working-directory: Packages/${{ matrix.package }}
         run: swift test
@@ -28,6 +40,7 @@ jobs:
   ios-packages:
     name: xcodebuild test (${{ matrix.package }})
     runs-on: macos-14
+    timeout-minutes: 20
     strategy:
       matrix:
         package: [ODKWebEngine, ODKCollectUI]
@@ -36,23 +49,19 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            Packages/${{ matrix.package }}/.build
+            ~/Library/Developer/Xcode/DerivedData
+          key: xcode-${{ runner.os }}-${{ matrix.package }}-${{ hashFiles(format('Packages/{0}/Package.swift', matrix.package)) }}
       - name: Pick an available iOS simulator
         id: simulator
         run: |
           set -euo pipefail
           NAME=$(xcrun simctl list devices available iOS -j \
-            | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-for runtime, devices in data['devices'].items():
-    if 'iOS' not in runtime:
-        continue
-    for d in devices:
-        if d['name'].startswith('iPhone'):
-            print(d['name'])
-            sys.exit(0)
-sys.exit(1)
-")
+            | jq -r '.devices | to_entries[] | select(.key | contains("iOS")) | .value[] | select(.name | startswith("iPhone")) | .name' \
+            | head -1)
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
       - name: xcodebuild test
         working-directory: Packages/${{ matrix.package }}
@@ -64,32 +73,29 @@ sys.exit(1)
   app-build:
     name: Build the app (xcodegen + xcodebuild)
     runs-on: macos-14
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+      - uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: xcode-${{ runner.os }}-app-${{ hashFiles('project.yml', 'Packages/*/Package.swift') }}
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
-        run: xcodegen generate
+        run: |
+          cp Config.xcconfig.example Config.xcconfig
+          xcodegen generate
       - name: Pick an available iOS simulator
         id: simulator
         run: |
           set -euo pipefail
           NAME=$(xcrun simctl list devices available iOS -j \
-            | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-for runtime, devices in data['devices'].items():
-    if 'iOS' not in runtime:
-        continue
-    for d in devices:
-        if d['name'].startswith('iPhone'):
-            print(d['name'])
-            sys.exit(0)
-sys.exit(1)
-")
+            | jq -r '.devices | to_entries[] | select(.key | contains("iOS")) | .value[] | select(.name | startswith("iPhone")) | .name' \
+            | head -1)
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
       - name: Build
         run: |
