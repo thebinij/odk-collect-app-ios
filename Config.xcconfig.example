@@ -1,0 +1,8 @@
+// Copy this file to `Config.xcconfig` (gitignored) and fill in your own values —
+// `xcodegen generate` reads that file, not this template. Defaults below already work
+// for the Simulator with no changes; only device/Archive builds need DEVELOPMENT_TEAM.
+
+PRODUCT_BUNDLE_IDENTIFIER = com.example.odk
+
+// Xcode → Settings → Accounts → select your account → the ID next to your team's name.
+DEVELOPMENT_TEAM =

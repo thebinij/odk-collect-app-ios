@@ -63,12 +63,11 @@ final class NoPasteTextField: UITextField {
     }
 }
 
-/// The username counterpart to `ManualEntrySecureField`. SwiftUI's `TextField`
-/// exposes `textContentType` only as a view modifier, which doesn't always reach the
-/// underlying `UITextField` as reliably as setting it directly — and paired with a
-/// secure field below, an unsuppressed username field is enough on its own for iOS to
-/// still treat the pair as a login form and offer its "Save Password" prompt. Dropping
-/// to `UITextField` here guarantees the override actually lands.
+/// The username counterpart to `ManualEntrySecureField`. SwiftUI's `TextField` exposes
+/// `textContentType` only as a view modifier, which doesn't reliably reach the
+/// underlying `UITextField` — leaving this field unsuppressed is enough on its own for
+/// iOS to treat it and the secure field below as a login form and offer "Save
+/// Password". Dropping to `UITextField` directly makes the override actually land.
 struct ManualEntryTextField: UIViewRepresentable {
     let placeholder: String
     @Binding var text: String

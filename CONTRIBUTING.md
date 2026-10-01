@@ -18,39 +18,32 @@ for the full setup/first-run walkthrough.
 
 ## Local signing setup
 
-`project.yml` ships with a placeholder bundle ID (`np.com.yipl.odk`) and no Apple
-Developer Team — nobody's personal/org identifiers belong in a public repo, and
-XcodeGen regenerates `ODKCollect.xcodeproj` entirely from this file for every
-contributor, so anything committed here silently becomes everyone else's default on
-their next `xcodegen generate`.
+`project.yml` carries no bundle ID or Apple Developer Team directly — those live in
+`Config.xcconfig`, which is gitignored and never committed. XcodeGen regenerates
+`ODKCollect.xcodeproj` entirely from `project.yml` for every contributor, so a personal
+identifier committed there would silently become everyone else's default on their next
+`xcodegen generate`; a gitignored file sidesteps that risk structurally instead of
+relying on anyone remembering not to commit it.
 
-To Run or Archive with your own identifiers locally, without ever risking committing
-them:
+**Simulator only:** nothing to do. `Config.xcconfig.example`'s defaults (a placeholder
+bundle ID, no team) are enough — Simulator builds don't need code signing at all.
 
-1. One-time per clone — enable the pre-commit guard that blocks this mistake if it
-   happens anyway:
+**Real device or Archive:**
+
+1. Copy the template to your own local, gitignored copy:
    ```sh
-   git config core.hooksPath scripts/git-hooks
+   cp Config.xcconfig.example Config.xcconfig
    ```
-2. Edit `project.yml` yourself: change `PRODUCT_BUNDLE_IDENTIFIER` to something unique
-   you control, and add `DEVELOPMENT_TEAM: <your team ID>` next to
-   `CODE_SIGN_STYLE: Automatic`.
-3. Tell git to stop tracking further changes to this file locally, so your edit can
-   never get staged or committed by accident (including by a broad `git add -A`):
-   ```sh
-   git update-index --skip-worktree project.yml
-   ```
-4. `xcodegen generate` as usual — your identifiers now survive every regenerate.
+2. Edit `Config.xcconfig` — set `DEVELOPMENT_TEAM` to your Apple Developer Team ID
+   (Xcode → Settings → Accounts → select your account — it's the ID shown next to your
+   team's name), and change `PRODUCT_BUNDLE_IDENTIFIER` to something unique you control.
+3. `xcodegen generate` as usual — your identifiers survive every regenerate, since
+   they're read from this file directly rather than baked into the generated project.
 
-If you later need to pull upstream changes to `project.yml` (a new target setting,
-dependency, etc.), temporarily restore tracking first — `git status` won't show the
-file as modified while skip-worktree is active, so a plain `git pull` can otherwise
-leave your copy silently out of date:
+One-time per clone — enable the pre-commit guard that blocks `Config.xcconfig` from
+ever being force-added past `.gitignore`:
 ```sh
-git update-index --no-skip-worktree project.yml
-git pull
-# reapply your PRODUCT_BUNDLE_IDENTIFIER / DEVELOPMENT_TEAM edits, then:
-git update-index --skip-worktree project.yml
+git config core.hooksPath scripts/git-hooks
 ```
 
 ## Before you start: open an issue first for anything non-trivial
@@ -146,9 +139,9 @@ manual check.
 - Make sure `xcodegen generate` output is **not** committed — check `git status` before
   pushing; the `.xcodeproj` is gitignored for a reason (it's fully regenerable from
   `project.yml`, and committing it just creates merge-conflict noise).
-- Make sure `project.yml` itself isn't carrying your personal bundle ID or
-  `DEVELOPMENT_TEAM` (see "Local signing setup" above) — the pre-commit hook catches
-  this if it's enabled, but double-check if you haven't set that up.
+- Make sure `Config.xcconfig` isn't staged (see "Local signing setup" above) — the
+  pre-commit hook catches this if it's enabled, but double-check if you haven't set
+  that up.
 
 ## Updating the changelog
 
