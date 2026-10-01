@@ -113,13 +113,22 @@ workflow file):
 
 ## Shipping a build
 
+Tags follow semver with a leading `v`: `v<major>.<minor>.<patch>`, optionally with a
+`-beta.<n>` suffix for a build going to testers before it's considered stable —
+`v0.1.1-beta.1`, then `v0.1.1-beta.2` if testers find something, then a plain `v0.1.1`
+once it's confirmed good. Drop the suffix once this project reaches a stable 1.0.
+
 ```sh
-git tag v1.0.0
-git push origin v1.0.0
+git tag v0.1.1-beta.1
+git push origin v0.1.1-beta.1
 ```
 
 That's it — the workflow builds, signs, and distributes automatically. Watch its
 progress under the **Actions** tab.
+
+The **build number** (`CFBundleVersion` — the `(1)` in "Version 1.0 (1)" on Home) isn't
+part of the tag — it's `$GITHUB_RUN_NUMBER`, which the workflow derives automatically
+and always increases, even across differently-named tags. Never set it by hand.
 
 ## Local Firebase config (`GoogleService-Info.plist`)
 
