@@ -4,10 +4,11 @@ import SwiftUI
 
 /// Lists forms that have been fully answered ("Send" was tapped) but haven't
 /// actually reached the server yet — almost always because there was no network at
-/// that moment. Each has its own "Send Now" retry; for now that's the only way one
-/// leaves this list (a Settings toggle for automatic retry-when-online is planned,
-/// not yet built), so nothing here is ever silently lost or silently sent without
-/// the user asking for it.
+/// that moment. Each has its own "Send Now" retry. With **Auto Send** set to
+/// anything other than Off (Form Management → Form Submission), the app also
+/// retries these on its own once a matching connection is available (see
+/// `AutoSendCoordinator`), but the manual button always remains available;
+/// nothing here is ever silently lost.
 public struct ReadyToSendView: View {
     private let project: Project
     private let password: String
@@ -73,17 +74,14 @@ public struct ReadyToSendView: View {
         sendingID = submission.id
         defer { sendingID = nil }
 
+        let sender = SubmissionSender(
+            serverURL: project.serverURL,
+            username: project.username,
+            password: password,
+            submissionStore: submissionStore
+        )
         do {
-            let xml = try submissionStore.xmlData(for: submission.id)
-            let attachments = submissionStore.attachmentFilenames(for: submission.id).compactMap { filename -> SubmissionAttachment? in
-                guard let data = try? submissionStore.attachmentData(for: submission.id, filename: filename) else { return nil }
-                return SubmissionAttachment(filename: filename, contentType: SubmissionAttachment.contentType(forFilename: filename), data: data)
-            }
-
-            let client = OpenRosaClient(serverURL: project.serverURL, username: project.username, password: password)
-            try await client.probeSubmission()
-            try await client.submit(xml: xml, attachments: attachments)
-            submissionStore.markSent(submission.id)
+            try await sender.send(submission)
         } catch {
             errorMessage = error.localizedDescription
         }

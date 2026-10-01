@@ -91,6 +91,27 @@ final class SubmissionStoreTests: XCTestCase {
         XCTAssertNotNil(store.sentSubmissions.first?.sentAt)
     }
 
+    /// Two send paths (a manual tap and an automatic sweep) must never both claim
+    /// the same submission, so only the first `beginSending` succeeds until it's
+    /// released.
+    func testBeginSendingClaimsUntilReleased() throws {
+        let saved = try store.save(xml: "<data/>", xformXML: "<h:html/>", formID: "f1", formName: "Form One", status: .readyToSend)
+        XCTAssertTrue(store.beginSending(saved.id))
+        XCTAssertFalse(store.beginSending(saved.id), "a second path must not also claim an in-flight submission")
+        store.endSending(saved.id)
+        XCTAssertTrue(store.beginSending(saved.id))
+    }
+
+    /// Nothing that isn't actually waiting to send may be claimed.
+    func testBeginSendingRefusesNonReadyToSendStatuses() throws {
+        let draft = try store.save(xml: "<data/>", xformXML: "<h:html/>", formID: "f1", formName: "Draft", status: .draft)
+        XCTAssertFalse(store.beginSending(draft.id))
+
+        let ready = try store.save(xml: "<data/>", xformXML: "<h:html/>", formID: "f1", formName: "Ready", status: .readyToSend)
+        store.markSent(ready.id)
+        XCTAssertFalse(store.beginSending(ready.id))
+    }
+
     func testDeleteRemovesTheSubmissionAndItsFiles() throws {
         let saved = try store.save(xml: "<data/>", xformXML: "<h:html/>", formID: "f1", formName: "Form One", status: .draft)
         try store.delete(saved.id)

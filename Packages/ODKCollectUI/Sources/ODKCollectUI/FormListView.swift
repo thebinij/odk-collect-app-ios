@@ -44,14 +44,13 @@ public struct FormListView: View {
     public var body: some View {
         content
             .navigationTitle("Forms")
+            .navigationBarTitleDisplayMode(.inline)
             .task { await loadForms() }
             .fullScreenCover(item: $downloadedForm) { downloaded in
                 EnketoFormContainerView(
                     formID: downloaded.id,
                     formName: downloaded.name,
                     xformXML: downloaded.xml,
-                    project: project,
-                    password: password,
                     submissionStore: submissionStore
                 ) {
                     downloadedForm = nil

@@ -26,7 +26,16 @@ public enum OpenRosaError: Error, LocalizedError {
 /// Stateless client for the two OpenRosa endpoints ODK Collect-style apps use to
 /// discover and download forms. Holds no app state — construct one per request
 /// (or per project) with the server URL and credentials to use.
-public struct OpenRosaClient {
+///
+/// A `final class`, not a `struct`, specifically so `deinit` can invalidate its
+/// `URLSession`: a session created with a delegate (needed here for Basic/Digest
+/// auth) keeps a strong reference to that delegate — and the plaintext credential
+/// it holds — until explicitly invalidated, per Apple's own documentation: an
+/// un-invalidated session simply never deallocates. Every call site constructs a
+/// fresh client per request, so without this every form-list fetch, form download,
+/// and submission — including each automatic `AutoSendCoordinator` sweep — would
+/// leak a session and its credential for the life of the process.
+public final class OpenRosaClient {
     private let serverURL: URL
     private let session: URLSession
 
@@ -34,6 +43,10 @@ public struct OpenRosaClient {
         self.serverURL = serverURL
         let authDelegate = BasicDigestAuthDelegate(username: username, password: password)
         self.session = URLSession(configuration: .default, delegate: authDelegate, delegateQueue: nil)
+    }
+
+    deinit {
+        session.finishTasksAndInvalidate()
     }
 
     /// `GET {serverURL}/formList` — the OpenRosa `xformsList` discovery call.
@@ -94,11 +107,12 @@ public struct OpenRosaClient {
         guard (200..<300).contains(http.statusCode) else { throw OpenRosaError.httpStatus(http.statusCode) }
     }
 
-    /// `session.data(for:)` surfaces a rejected-credential retry loop's abort as a
-    /// generic `NSURLErrorUserCancelledAuthentication`, which reads as gibberish to a
-    /// user — map it to a clear, specific error instead.
+    /// `BasicDigestAuthDelegate` aborts a rejected-credential retry loop via
+    /// `.cancelAuthenticationChallenge`, which surfaces here as a generic
+    /// `NSURLErrorCancelled` ("cancelled") — gibberish to a user trying to tell a bad
+    /// password apart from a dropped connection. Map it to a clear, specific error.
     private static func mapTransportError(_ error: Error) -> OpenRosaError {
-        if (error as NSError).code == NSURLErrorUserCancelledAuthentication {
+        if (error as NSError).code == NSURLErrorCancelled {
             return .authenticationFailed
         }
         return .network(error)
@@ -160,7 +174,7 @@ public struct OpenRosaClient {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
-            throw OpenRosaError.network(error)
+            throw Self.mapTransportError(error)
         }
 
         guard let http = response as? HTTPURLResponse else { throw OpenRosaError.invalidResponse }

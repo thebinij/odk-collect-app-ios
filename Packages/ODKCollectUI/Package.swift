@@ -19,7 +19,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ODKCollectUITests",
-            dependencies: ["ODKCollectUI"]
+            dependencies: ["ODKCollectUI", "OpenRosaKit", "ProjectSettingsKit"]
         )
     ]
 )

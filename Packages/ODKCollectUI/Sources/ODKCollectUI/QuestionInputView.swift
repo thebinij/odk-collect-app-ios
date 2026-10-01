@@ -13,7 +13,7 @@ struct QuestionInputView: View {
     /// Set only when *this* question is the one that just failed validation —
     /// tints its own row red and shows the message directly below it, rather
     /// than as a generic banner elsewhere on the page.
-    var errorMessage: String?
+    let errorMessage: String?
 
     init(
         question: Question,

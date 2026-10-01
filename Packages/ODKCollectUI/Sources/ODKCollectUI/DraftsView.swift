@@ -1,5 +1,4 @@
 import OpenRosaKit
-import ProjectSettingsKit
 import SwiftUI
 
 private struct OpenedDraft: Identifiable {
@@ -16,17 +15,13 @@ private struct OpenedDraft: Identifiable {
 /// was saved alongside the answers, so this works fully offline. A fully answered
 /// form that's just waiting to upload lives in Ready to Send instead, not here.
 public struct DraftsView: View {
-    private let project: Project
-    private let password: String
     @ObservedObject private var submissionStore: SubmissionStore
 
     @State private var openedDraft: OpenedDraft?
     @State private var isLoadingDraft = false
     @State private var loadErrorMessage: String?
 
-    public init(project: Project, password: String, submissionStore: SubmissionStore) {
-        self.project = project
-        self.password = password
+    public init(submissionStore: SubmissionStore) {
         self.submissionStore = submissionStore
     }
 
@@ -67,8 +62,6 @@ public struct DraftsView: View {
                 xformXML: draft.xformXML,
                 instanceXML: draft.instanceXML,
                 existingSubmissionID: draft.id,
-                project: project,
-                password: password,
                 submissionStore: submissionStore
             ) {
                 openedDraft = nil
