@@ -48,10 +48,23 @@ or at
    ```
    This is `IOS_DIST_CERTIFICATE_BASE64`.
 
-**Get the provisioning profile:**
+**Get the provisioning profile — from developer.apple.com, not Xcode's automatic
+signing:**
 
-Download the `.mobileprovision` file from developer.apple.com (or find it locally under
-`~/Library/MobileDevice/Provisioning Profiles/` if Xcode already downloaded it), then:
+It's tempting to let `xcodebuild archive -allowProvisioningUpdates` generate one —
+don't. A profile Xcode auto-creates this way gets its default name ("iOS Team Ad Hoc
+Provisioning Profile: …"), and `xcodebuild` specifically refuses that kind of profile
+when `CODE_SIGN_STYLE=Manual` (what this workflow needs, since there's no interactive
+Xcode session on a CI runner to manage anything): **"is Xcode managed, but signing
+settings require a manually managed profile."** A profile created directly on the
+Developer Portal with your own name doesn't carry that restriction.
+
+1. [developer.apple.com → Profiles](https://developer.apple.com/account/resources/profiles/list)
+   → **+** → **Ad Hoc** (under Distribution)
+2. Select the App ID for your bundle ID, then your **Apple Distribution** certificate
+3. Select at least one registered test device
+4. Give it any name of your own choosing (not Xcode's auto-generated pattern) →
+   **Generate** → **Download**
 
 ```sh
 base64 -i YourProfile.mobileprovision | pbcopy
@@ -60,6 +73,15 @@ base64 -i YourProfile.mobileprovision | pbcopy
 This is `IOS_PROVISIONING_PROFILE_BASE64`. (The workflow reads the profile's UUID and
 Team ID directly out of this file at build time — you don't need to supply those
 separately.)
+
+**If you ever generate a new Distribution certificate** (e.g. the old one's private key
+isn't on this Mac — check with `security find-identity -v -p codesigning`), any
+existing provisioning profile goes stale silently: it still decodes and looks valid,
+but references a certificate whose key you no longer hold, so CI fails signing with
+something like `security: failed to decode message`. Repeat the steps above to issue a
+fresh profile tied to the new certificate, and update the
+`IOS_PROVISIONING_PROFILE_BASE64` secret — a profile is pinned to one specific
+certificate, not just a team.
 
 ### 3. Firebase: a service account for the App Distribution API
 

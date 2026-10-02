@@ -6,3 +6,9 @@ PRODUCT_BUNDLE_IDENTIFIER = com.example.odk
 
 // Xcode → Settings → Accounts → select your account → the ID next to your team's name.
 DEVELOPMENT_TEAM =
+
+// --- Release (Archive) signing — only used when building for device/distribution ---
+// These are set by CI (firebase-distribution.yml) from the provisioning profile.
+// Local builds can leave these empty to use Automatic signing.
+// PROVISIONING_PROFILE_SPECIFIER = iOS Team Ad Hoc Provisioning Profile: com.example.odk
+// PROVISIONING_PROFILE = <UUID from .mobileprovision>
