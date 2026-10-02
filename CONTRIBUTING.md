@@ -65,7 +65,11 @@ bundle ID, no team) are enough — Simulator builds don't need code signing at a
 2. Edit `Config.xcconfig` — set `DEVELOPMENT_TEAM` to your Apple Developer Team ID
    (Xcode → Settings → Accounts → select your account — it's the ID shown next to your
    team's name), and change `PRODUCT_BUNDLE_IDENTIFIER` to something unique you control.
-3. `xcodegen generate` as usual — your identifiers survive every regenerate, since
+3. For **Archive builds** (device distribution, TestFlight, App Store), also set
+   `PROVISIONING_PROFILE` (the UUID from your .mobileprovision file) and
+   `PROVISIONING_PROFILE_SPECIFIER` (the profile name, e.g.
+   `iOS Team Ad Hoc Provisioning Profile: com.yourcompany.yourapp`).
+4. `xcodegen generate` as usual — your identifiers survive every regenerate, since
    they're read from this file directly rather than baked into the generated project.
 
 One-time per clone — enable the pre-commit guard that blocks `Config.xcconfig` from

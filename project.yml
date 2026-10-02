@@ -37,7 +37,6 @@ targets:
       - package: ODKCollectUI
     settings:
       base:
-        CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -46,3 +45,11 @@ targets:
         SWIFT_VERSION: 6.0
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ODKCollect/Info.plist
+      configs:
+        Debug:
+          CODE_SIGN_STYLE: Automatic
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE: "$(PROVISIONING_PROFILE)"
+          PROVISIONING_PROFILE_SPECIFIER: "$(PROVISIONING_PROFILE_SPECIFIER)"

@@ -75,6 +75,8 @@ jobs:
           cat > Config.xcconfig <<EOF
           PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID
           DEVELOPMENT_TEAM = $TEAM_ID
+          PROVISIONING_PROFILE = $PROFILE_UUID
+          PROVISIONING_PROFILE_SPECIFIER = "iOS Team Ad Hoc Provisioning Profile: $BUNDLE_ID"
           EOF
 
       - name: Generate Xcode project
@@ -89,11 +91,7 @@ jobs:
             -destination "generic/platform=iOS" \
             -archivePath "$RUNNER_TEMP/ODKCollect.xcarchive" \
             MARKETING_VERSION="${{ steps.version.outputs.marketing_version }}" \
-            CURRENT_PROJECT_VERSION="${{ steps.version.outputs.build_number }}" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            PROVISIONING_PROFILE="$PROFILE_UUID"
+            CURRENT_PROJECT_VERSION="${{ steps.version.outputs.build_number }}"
 
       - name: Export .ipa
         env:
