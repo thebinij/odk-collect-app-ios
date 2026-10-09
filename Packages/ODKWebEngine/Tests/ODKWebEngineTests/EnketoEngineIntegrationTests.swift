@@ -34,6 +34,16 @@ final class EnketoEngineIntegrationTests: XCTestCase {
 
     // MARK: - Harness
 
+    // The very first `WKWebView` a test process ever loads pays a one-time cost to
+    // spin up WebKit's WebContent/Networking XPC helpers — on a loaded CI runner this
+    // has been observed to take upwards of a minute, versus ~1-2 seconds for every
+    // load after it once that machinery is warm. `loadForm` gives only that first call
+    // a generous budget so it actually waits out the real cold start instead of
+    // timing out early and letting the in-flight load bleed slowness into whichever
+    // test happens to run next; every later call keeps a tight timeout so a genuine
+    // regression still fails fast.
+    private static var webViewPoolWarmed = false
+
     private func loadForm(_ xformXML: String, instanceXML: String? = nil) -> EnketoFormState {
         let state = EnketoFormState()
         let hosting = UIHostingController(rootView: EnketoFormView(xformXML: xformXML, instanceXML: instanceXML, state: state))
@@ -53,7 +63,9 @@ final class EnketoEngineIntegrationTests: XCTestCase {
             .first()
             .sink { _ in ready.fulfill() }
             .store(in: &cancellables)
-        wait(for: [ready], timeout: 10)
+        let timeout: TimeInterval = Self.webViewPoolWarmed ? 10 : 90
+        Self.webViewPoolWarmed = true
+        wait(for: [ready], timeout: timeout)
 
         XCTAssertNil(state.loadError)
         XCTAssertTrue(state.isFormReady)
