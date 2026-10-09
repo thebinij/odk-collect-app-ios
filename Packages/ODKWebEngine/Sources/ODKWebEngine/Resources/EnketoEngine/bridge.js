@@ -465,7 +465,10 @@ window.ODKBridge = (function () {
         if (button) {
             button.click();
         }
-        getQuestions();
+        // enketo-core's add goes through its own async logic (cloning the repeat
+        // template, running calculates/defaults); wait a tick so the model is
+        // updated before we re-query the question list.
+        setTimeout(getQuestions, 0);
     }
 
     function removeRepeatInstance(repeatRef, index) {
